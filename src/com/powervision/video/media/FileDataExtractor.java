@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Created by liwei on 15-7-3.
  */
-public class FileDataExtractor extends DataExtractor implements Runnable{
+public class FileDataExtractor extends DataExtractor implements IDataExtractor,Runnable{
     //For debug
     private static final boolean DEBUG = false;
     private static final String TAG = "FileDataExtractor";
@@ -51,13 +51,14 @@ public class FileDataExtractor extends DataExtractor implements Runnable{
         filePath = path;
     }
 
+
     @Override
-    byte[] getFrame() {
+    public byte[] getFrame() {
         return new byte[0];
     }
 
     @Override
-    boolean openDataExtractor() {
+    public boolean openDataExtractor() {
         if(filePath != null) {
             return openFile(filePath);
         } else {
@@ -66,17 +67,17 @@ public class FileDataExtractor extends DataExtractor implements Runnable{
     }
 
     @Override
-    void closeDataExtractor() {
+    public void closeDataExtractor() {
         closeFile(fis);
     }
 
     @Override
-    void start() {
+    public void start() {
         this.run();
     }
 
     @Override
-    int getStatus() {
+    public int getStatus() {
         return status;
     }
 
@@ -120,7 +121,7 @@ public class FileDataExtractor extends DataExtractor implements Runnable{
     }
 
     private int getNaluList(byte[] src) {
-        for(int i=0; i<src.length; i++) {
+        for(int i=0; i<fileLength; i++) {
             if( (src[i] == 0x0) && (src[i+1] == 0x0)) {
                 if(src[i+2] == 0x01) {
 
@@ -155,12 +156,12 @@ public class FileDataExtractor extends DataExtractor implements Runnable{
         }
 
         if(hasSps) {
-            index = naluList.get(0);
+            index = naluList.get(1);
             for(int j=0; j<5; j++) {
                 int temp = bytes[index+j];
                 if((temp & 0x0f) == 0x08) {
                     hasPps = true;
-                    break;
+                    return true;
                 }
             }
         }
@@ -176,12 +177,16 @@ public class FileDataExtractor extends DataExtractor implements Runnable{
             return;
         };
 
+        if(getNaluList(bytes)<=0) {
+            status = DATA_EXTRACTOR_STATUS_FAILED;
+            return;
+        }
+
         if(!hasSpsPps()) {
             status = DATA_EXTRACTOR_STATUS_FAILED;
             return;
         }
 
-        
         status = DATA_EXTRACTOR_STATUS_OK;
     }
 }
