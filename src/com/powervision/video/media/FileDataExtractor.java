@@ -3,9 +3,11 @@ package com.powervision.video.media;
 import android.os.Environment;
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,11 +36,12 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
 
     //Save the file stream data
     private byte[] bytes = new byte[MAX_SISE];
-    private byte[] Sps = new byte[128];
-    private byte[] Pps = new byte[128];
+    private ByteBuffer Sps = null;
+    private ByteBuffer Pps = null;
 
     private int status;
 
+    private int decodeNaluIndex = 2;
     private static List <Integer> naluList = new ArrayList<Integer>();
 
     //Constructor
@@ -54,7 +57,27 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
 
     @Override
     public byte[] getFrame() {
-        return new byte[0];
+        int start = naluList.get(decodeNaluIndex);
+        int count = naluList.get(decodeNaluIndex+1)-naluList.get(decodeNaluIndex);
+
+        byte[] temp = new byte[count];
+        System.arraycopy(bytes, start, temp, 0, count);
+
+        if(decodeNaluIndex==naluList.size()-2) {
+            //循环发送数据
+            decodeNaluIndex = 2;
+        } else {
+            decodeNaluIndex++;
+        }
+
+        if(DEBUG) {
+            Log.i(TAG, "*************************** START *******************************");
+            for(int i=0; i<count; i++) {
+                Log.i(TAG, "0x" + Integer.toHexString(temp[i]) + " ");
+            }
+            Log.i(TAG, "***************************  END  *******************************");
+        }
+        return temp;
     }
 
     @Override
@@ -151,6 +174,8 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
             int temp = bytes[index+i];
             if((temp & 0x0f) == 0x07) {
                 hasSps = true;
+                Sps = ByteBuffer.wrap(bytes, naluList.get(0), naluList.get(1)-naluList.get(0));
+
                 break;
             }
         }
@@ -161,6 +186,7 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
                 int temp = bytes[index+j];
                 if((temp & 0x0f) == 0x08) {
                     hasPps = true;
+                    Pps = ByteBuffer.wrap(bytes, naluList.get(1), naluList.get(2)-naluList.get(1));
                     return true;
                 }
             }
