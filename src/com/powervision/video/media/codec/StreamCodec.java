@@ -411,12 +411,12 @@ public class StreamCodec extends Codec implements ICodec {
     				}
     			*/
 
-//                        try {
-//                            Thread.sleep(50);
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                            break;
-//                        }
+                        try {
+                            Thread.sleep(50);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            break;
+                        }
 
                         if(mSurface == null) {
                             codec.releaseOutputBuffer(decoderStatus, false /*render*/);
@@ -428,4 +428,11 @@ public class StreamCodec extends Codec implements ICodec {
             }
         }
     }
+
+
+    static {
+        System.loadLibrary("yuv2rgb");
+    }
+
+    private native int[] decodeYUV420SP(byte[] yuv420, int width, int height);
 }

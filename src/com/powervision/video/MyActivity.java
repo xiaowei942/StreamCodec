@@ -14,6 +14,8 @@ import com.powervision.video.media.extractor.IDataExtractor;
 public class MyActivity extends Activity implements OnFrameProcessedListener, SurfaceHolder.Callback
 {
     final boolean HASSURFACE = true;
+    final boolean WINDOWDISPLAY = false;
+
     public Surface mSurface = null;
     int mWidth = 1280;
     int mHeight = 720;
@@ -26,50 +28,21 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
 
-        sv = (SurfaceView)findViewById(R.id.surface_view);
-        sv.getHolder().addCallback(new SurfaceHolder.Callback() {
-            @Override
-            public void surfaceCreated(SurfaceHolder surfaceHolder) {
-
+        if(HASSURFACE) {
+            if (!WINDOWDISPLAY) {
+                setContentView(R.layout.main);
+                sv = (SurfaceView) findViewById(R.id.surface_view);
+                sv.getHolder().addCallback(this);
+            } else {
+                sv = new SurfaceView(this);
+                sv.getHolder().addCallback(this);
+                setContentView(sv);
             }
-
-            @Override
-            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
-                if(HASSURFACE) {
-                    mSurface = surfaceHolder.getSurface();
-                } else {
-                    mSurface = null;
-                }
-
-                CodecParam param = new CodecParam();
-                param.extractor = extractor;
-                param.surface = mSurface;
-                param.width = 1280;
-                param.height = 720;
-                CodecParam.codecType = Codec.CODEC_TYPE_MEDIACODEC;
-                codec = CodecFactory.createCodec(param);
-                codec.asObject().setOnFrameProcessedListener(MyActivity.this);
-
-                codec.asObject().initCodec(null);
-                codec.asObject().openCodec();
-            }
-
-            @Override
-            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
-
-            }
-        });
-
-//        sv = new SurfaceView(this);
-//        sv.getHolder().addCallback(this);
-//        setContentView(sv);
-
-        //IDataExtractor extractor = ExtractorFactory.createFileDataExtractor("/storage/emulated/0/test.h264");
-        extractor = ExtractorFactory.createFileDataExtractor("/mnt/sdcard/test.h264");
-        extractor.openDataExtractor();
-        extractor.start();
+        } else {
+            setContentView(R.layout.main);
+            prepare();
+        }
 
     }
 
@@ -85,7 +58,32 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
 
     @Override
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
+        if(HASSURFACE) {
+            mSurface = surfaceHolder.getSurface();
+        } else {
+            mSurface = null;
+        }
 
+        prepare();
+    }
+
+    private void prepare() {
+        //IDataExtractor extractor = ExtractorFactory.createFileDataExtractor("/storage/emulated/0/test.h264");
+        extractor = ExtractorFactory.createFileDataExtractor("/mnt/sdcard/test.h264");
+        extractor.openDataExtractor();
+        extractor.start();
+
+        CodecParam param = new CodecParam();
+        param.extractor = extractor;
+        param.surface = mSurface;
+        param.width = 1280;
+        param.height = 720;
+        CodecParam.codecType = Codec.CODEC_TYPE_MEDIACODEC;
+        codec = CodecFactory.createCodec(param);
+        codec.asObject().setOnFrameProcessedListener(MyActivity.this);
+
+        codec.asObject().initCodec(null);
+        codec.asObject().openCodec();
     }
 
     @Override
