@@ -367,12 +367,6 @@ public class StreamCodec extends Codec implements ICodec {
                     } else {  // decoderStatus >= 0
                         ByteBuffer outputFrame = decoderOutputBuffers[decoderStatus];
 
-
-                        byte[] dat = new byte[info.size];
-                        outputFrame.get(dat);
-                        outputFrame.position(info.offset);
-
-
                         if(mSurface == null)
                         {
                             //outputFrame.position(info.offset);
@@ -417,12 +411,12 @@ public class StreamCodec extends Codec implements ICodec {
     				}
     			*/
 
-                        try {
-                            Thread.sleep(50);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                            break;
-                        }
+//                        try {
+//                            Thread.sleep(50);
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                            break;
+//                        }
 
                         if(mSurface == null) {
                             codec.releaseOutputBuffer(decoderStatus, false /*render*/);

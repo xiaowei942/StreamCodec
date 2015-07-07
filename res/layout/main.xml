@@ -4,10 +4,6 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     >
-<TextView
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:text="Hello World, MyActivity"
-    />
+<SurfaceView android:id="@+id/surface_view" android:layout_width="640px" android:layout_height="480px"/>
 </LinearLayout>
 

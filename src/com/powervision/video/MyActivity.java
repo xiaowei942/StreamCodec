@@ -19,16 +19,52 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     int mHeight = 720;
     ICodec codec;
     IDataExtractor extractor;
+    SurfaceView sv;
 
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.main);
 
-        SurfaceView sv = new SurfaceView(this);
-        sv.getHolder().addCallback(this);
-        setContentView(sv);
+        sv = (SurfaceView)findViewById(R.id.surface_view);
+        sv.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder surfaceHolder) {
+
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
+                if(HASSURFACE) {
+                    mSurface = surfaceHolder.getSurface();
+                } else {
+                    mSurface = null;
+                }
+
+                CodecParam param = new CodecParam();
+                param.extractor = extractor;
+                param.surface = mSurface;
+                param.width = 1280;
+                param.height = 720;
+                CodecParam.codecType = Codec.CODEC_TYPE_MEDIACODEC;
+                codec = CodecFactory.createCodec(param);
+                codec.asObject().setOnFrameProcessedListener(MyActivity.this);
+
+                codec.asObject().initCodec(null);
+                codec.asObject().openCodec();
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
+
+            }
+        });
+
+//        sv = new SurfaceView(this);
+//        sv.getHolder().addCallback(this);
+//        setContentView(sv);
 
         //IDataExtractor extractor = ExtractorFactory.createFileDataExtractor("/storage/emulated/0/test.h264");
         extractor = ExtractorFactory.createFileDataExtractor("/mnt/sdcard/test.h264");
@@ -50,23 +86,6 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     @Override
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
 
-        if(HASSURFACE) {
-            mSurface = surfaceHolder.getSurface();
-        } else {
-            mSurface = null;
-        }
-
-        CodecParam param = new CodecParam();
-        param.extractor = extractor;
-        //param.surface = mSurface;
-        param.width = 1280;
-        param.height = 720;
-        CodecParam.codecType = Codec.CODEC_TYPE_MEDIACODEC;
-        codec = CodecFactory.createCodec(param);
-        codec.asObject().setOnFrameProcessedListener(this);
-
-        codec.asObject().initCodec(null);
-        codec.asObject().openCodec();
     }
 
     @Override
