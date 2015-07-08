@@ -179,12 +179,13 @@ void initTable()
 	}
 }
 
-jintArray Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIEnv * env,
-		jobject thiz, jbyteArray buf, jint width, jint height) {
+	jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIEnv * env,
+			jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height) {
 	jbyte * yuv420sp = (*env)->GetByteArrayElements(env, buf, 0);
+	jint * rgb = (*env)->GetIntArrayElements(env, dat, 0);
 
 	int frameSize = width * height;
-	jint rgb[frameSize]; // 新图像像素值
+	//jint rgb[frameSize]; // 新图像像素值
 
 	initTable();
 
@@ -226,8 +227,170 @@ jintArray Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIE
 		}
 	}
 
-	jintArray result = (*env)->NewIntArray(env, frameSize);
-	(*env)->SetIntArrayRegion(env, result, 0, frameSize, rgb);
+	//jintArray result = (*env)->NewIntArray(env, frameSize);
+	//(*env)->SetIntArrayRegion(env, result, 0, frameSize, rgb);
 	(*env)->ReleaseByteArrayElements(env, buf, yuv420sp, 0);
-	return result;
+	(*env)->ReleaseIntArrayElements(env, dat, rgb, 0);
+	return 0;
+}
+
+jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP2(JNIEnv * env,
+		jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height) 
+{
+	jbyte * yuv420sp = (*env)->GetByteArrayElements(env, buf, 0);
+	jint * rgb = (*env)->GetIntArrayElements(env, dat, 0);
+ 
+	int frameSize = width * height;
+	//jint rgb[frameSize]; // 新图像像素值
+ 
+	int i = 0, j = 0,yp = 0;
+	int uvp = 0, u = 0, v = 0;
+	for (j = 0, yp = 0; j < height; j++)
+	{
+		uvp = frameSize + (j >> 1) * width;
+		u = 0;
+		v = 0;
+		for (i = 0; i < width; i++, yp++)
+		{
+			int y = (0xff & ((int) yuv420sp[yp])) - 16;
+			if (y < 0)
+				y = 0;
+			if ((i & 1) == 0)
+			{
+				v = (0xff & yuv420sp[uvp++]) - 128;
+				u = (0xff & yuv420sp[uvp++]) - 128;
+			}
+ 
+			int y1192 = 1192 * y;
+			int r = (y1192 + 1634 * v);
+			int g = (y1192 - 833 * v - 400 * u);
+			int b = (y1192 + 2066 * u);
+ 
+			if (r < 0) r = 0; else if (r > 262143) r = 262143;
+			if (g < 0) g = 0; else if (g > 262143) g = 262143;
+			if (b < 0) b = 0; else if (b > 262143) b = 262143;
+ 
+			//LOGI("	 R: %d G: %d B: %d  yp: %d\n", r, g, b, yp);
+			rgb[yp] = 0xff000000 | ((r << 6) & 0xff0000) | ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
+		}
+	}
+ 
+	//jintArray result = (*env)->NewIntArray(env, frameSize);
+	//(*env)->SetIntArrayRegion(env, result, 0, frameSize, rgb);
+	(*env)->ReleaseByteArrayElements(env, buf, yuv420sp, 0);
+	(*env)->ReleaseIntArrayElements(env, dat, rgb, 0);
+	return 0;
+}
+
+
+void ccvt_420p_rgb565(int width, int height, const unsigned char *src, __u16 *dst)
+{
+int line, col, linewidth;
+int y, u, v, yy, vr, ug, vg, ub;
+int r, g, b;
+const unsigned char *py, *pu, *pv;
+
+linewidth = width >> 1;
+py = src;
+pu = py + (width * height);
+pv = pu + (width * height) / 4;
+
+y = *py++;
+yy = y << 8;
+u = *pu - 128;
+ug =   88 * u;
+ub = 454 * u;
+v = *pv - 128;
+vg = 183 * v;
+vr = 359 * v;
+
+for (line = 0; line < height; line++) {
+   for (col = 0; col < width; col++) {
+    r = (yy +      vr) >> 8;
+    g = (yy - ug - vg) >> 8;
+    b = (yy + ub     ) >> 8;
+
+    if (r < 0)   r = 0;
+    if (r > 255) r = 255;
+    if (g < 0)   g = 0;
+    if (g > 255) g = 255;
+    if (b < 0)   b = 0;
+    if (b > 255) b = 255;
+   *dst++ = (((__u16)r>>3)<<11) | (((__u16)g>>2)<<5) | (((__u16)b>>3)<<0);
+  
+    y = *py++;
+    yy = y << 8;
+    if (col & 1) {
+     pu++;
+     pv++;
+
+     u = *pu - 128;
+     ug =   88 * u;
+     ub = 454 * u;
+     v = *pv - 128;
+     vg = 183 * v;
+     vr = 359 * v;
+    }
+   }
+   if ((line & 1) == 0) { // even line: rewind
+    pu -= linewidth;
+    pv -= linewidth;
+   }
+}
+}
+
+
+
+
+//*************************************************************
+int convertYUVtoARGB(int y, int u, int v) {
+    jint r,g,b;
+ 
+    r = y + (int)1.402f*u;
+    g = y - (int)(0.344f*v +0.714f*u);
+    b = y + (int)1.772f*v;
+    r = r>255? 255 : r<0 ? 0 : r;
+    g = g>255? 255 : g<0 ? 0 : g;
+    b = b>255? 255 : b<0 ? 0 : b;
+    return 0xff000000 | (r<<16) | (g<<8) | b;
+}
+
+
+jint Java_com_powervision_video_media_codec_StreamCodec_YUV420PtoARGB8888(JNIEnv * env,
+		jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height) {
+    jbyte * data = (*env)->GetByteArrayElements(env, buf, 0);
+    jint * pixels = (*env)->GetIntArrayElements(env, dat, 0);
+    int size = width*height;
+    int offset = size;
+    //int pixels[size];
+    int u, v, y1, y2, y3, y4;
+    // i along Y and the final pixels
+    // k along pixels U and V
+    int i=0, k=0;
+#if 1
+    for(i=0, k=0; i < size; i+=2, k+=2) {
+        y1 = data[i  ]&0xff;
+        y2 = data[i+1]&0xff;
+        y3 = data[width+i  ]&0xff;
+        y4 = data[width+i+1]&0xff;
+ 
+        u = data[offset+k  ]&0xff;
+        v = data[offset+k+1]&0xff;
+        u = u-128;
+        v = v-128;
+ 
+        pixels[i  ] = convertYUVtoARGB(y1, u, v);
+        pixels[i+1] = convertYUVtoARGB(y2, u, v);
+        pixels[width+i  ] = convertYUVtoARGB(y3, u, v);
+        pixels[width+i+1] = convertYUVtoARGB(y4, u, v);
+ 
+        if (i!=0 && (i+2)%width==0)
+            i+=width;
+    }
+#endif
+    //jintArray result = (*env)->NewIntArray(env, size);
+    //(*env)->SetIntArrayRegion(env, result, 0, size, pixels);
+    (*env)->ReleaseByteArrayElements(env, buf, data, 0);
+    (*env)->ReleaseIntArrayElements(env, dat, pixels, 0);
+    return 123;
 }

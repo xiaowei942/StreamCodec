@@ -9,6 +9,7 @@ import com.powervision.video.media.extractor.IDataExtractor;
 public class CodecParam {
     public IDataExtractor extractor = null;
     public static int codecType = Codec.CODEC_TYPE_DEFAULT;
+    public Object obj = null;
     public Surface surface = null;
     public int width = -1;
     public int height = -1;

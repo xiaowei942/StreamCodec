@@ -12,8 +12,8 @@ extern "C" {
  * Method:    decodeYUV420SP
  * Signature: ([BII)[I
  */
-JNIEXPORT jintArray JNICALL Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP
-  (JNIEnv *, jobject, jbyteArray, jint, jint);
+jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP
+  (JNIEnv * env, jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height);
 
 #ifdef __cplusplus
 }

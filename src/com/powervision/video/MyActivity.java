@@ -13,7 +13,7 @@ import com.powervision.video.media.extractor.IDataExtractor;
 
 public class MyActivity extends Activity implements OnFrameProcessedListener, SurfaceHolder.Callback
 {
-    final boolean HASSURFACE = true;
+    final boolean HASSURFACE = false;
     final boolean WINDOWDISPLAY = false;
 
     public Surface mSurface = null;
@@ -21,7 +21,7 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     int mHeight = 720;
     ICodec codec;
     IDataExtractor extractor;
-    SurfaceView sv;
+    public MySurfaceView sv;
 
     /** Called when the activity is first created. */
     @Override
@@ -32,18 +32,21 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
         if(HASSURFACE) {
             if (!WINDOWDISPLAY) {
                 setContentView(R.layout.main);
-                sv = (SurfaceView) findViewById(R.id.surface_view);
+                sv = (MySurfaceView) findViewById(R.id.surface_view);
                 sv.getHolder().addCallback(this);
             } else {
-                sv = new SurfaceView(this);
+                sv = new MySurfaceView(this);
                 sv.getHolder().addCallback(this);
                 setContentView(sv);
             }
         } else {
             setContentView(R.layout.main);
+            sv = (MySurfaceView) findViewById(R.id.surface_view);
             prepare();
+            sv.setFrameBitmap(StreamCodec.getFrameBitmap());
+            sv.setHolder(sv.getHolder());
+            new Thread(sv).start();
         }
-
     }
 
     @Override
@@ -68,7 +71,6 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     }
 
     private void prepare() {
-        //IDataExtractor extractor = ExtractorFactory.createFileDataExtractor("/storage/emulated/0/test.h264");
         extractor = ExtractorFactory.createFileDataExtractor("/mnt/sdcard/test.h264");
         extractor.openDataExtractor();
         extractor.start();
@@ -78,6 +80,7 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
         param.surface = mSurface;
         param.width = 1280;
         param.height = 720;
+        param.obj = this;
         CodecParam.codecType = Codec.CODEC_TYPE_MEDIACODEC;
         codec = CodecFactory.createCodec(param);
         codec.asObject().setOnFrameProcessedListener(MyActivity.this);
