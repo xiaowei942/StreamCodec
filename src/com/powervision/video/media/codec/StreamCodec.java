@@ -35,7 +35,7 @@ public class StreamCodec extends Codec implements ICodec {
     private static final boolean OUTPUT_YUV_TO_FILE = false;
     private static final boolean OUTPUT_RGB_TO_FILE = false;
 
-    private static byte[] brgb = new byte[1280 * 720 * 2];
+    private static byte[] brgb = new byte[1280 * 720 * 4];
     private static int[] irgb = null;
 
     static Bitmap bmp = null;
@@ -85,13 +85,13 @@ public class StreamCodec extends Codec implements ICodec {
 
         irgb = new int[1280 * 720];
 
-        for(int i=0; i<irgb.length; i++) {
-            irgb[i] = 0xffffffff;
-        }
-
         // Initialize the bitmap, with the replaced color
         bmp = Bitmap.createBitmap(mWidth, mHeight,
                 Bitmap.Config.ARGB_8888);
+        /* We cannot use following way to create a bitmap, or error occurs when setPixels
+            bmp = Bitmap.createBitmap(irgb, mWidth, mHeight,
+                    Bitmap.Config.ARGB_8888);
+        */
     }
 
     void initMediaCodec(ByteBuffer sps, ByteBuffer pps) {
@@ -301,8 +301,11 @@ public class StreamCodec extends Codec implements ICodec {
 
                                     while (true) {
                                         if (!framePrepared) {
-                                            YUV420PtoARGB8888(irgb, data, mWidth, mHeight);
-                                            bmp.setPixels(irgb, 0, 1280, 0, 0, 1280, 720);
+                                            //YUV420PtoARGB8888(irgb, data, mWidth, mHeight);
+                                            //bmp.setPixels(irgb, 0, mWidth, 0, 0, mWidth, mHeight);
+                                            decodeYUV420P(brgb, data, mWidth, mHeight);
+                                            ByteBuffer byteBuffer = ByteBuffer.wrap(brgb);
+                                            bmp.copyPixelsFromBuffer(byteBuffer);
                                             Log.i(TAG, "Decoded !!!");
                                             framePrepared = true;
                                             break;
@@ -366,6 +369,7 @@ public class StreamCodec extends Codec implements ICodec {
         System.loadLibrary("yuv2rgb");
     }
 
+    private native int decodeYUV420P(byte[] data, byte[] yuv420, int width, int height);
     private native int decodeYUV420SP(int[] data, byte[] yuv420, int width, int height);
     private native int decodeYUV420SP2(int[] data, byte[] yuv420, int width, int height);
     private native int YUV420PtoARGB8888(int[] data, byte[] buf, int width, int height);

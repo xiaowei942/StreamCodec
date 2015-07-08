@@ -53,7 +53,7 @@ public class MySurfaceView extends SurfaceView implements
                 StreamCodec.framePrepared = false;
             }
             try {
-                Thread.sleep(10);
+                Thread.sleep(60);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -65,6 +65,7 @@ public class MySurfaceView extends SurfaceView implements
         Log.i("MySurfaceView", "draw !!!");
         Rect rect = new Rect();
         getDrawingRect(rect);
+        bitmap.setHasAlpha(true);
         canvas.drawBitmap(bitmap, null, rect, null);
         holder.unlockCanvasAndPost(canvas);
     }

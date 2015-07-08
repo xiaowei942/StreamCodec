@@ -344,7 +344,7 @@ for (line = 0; line < height; line++) {
 
 
 //*************************************************************
-int convertYUVtoARGB(int y, int u, int v) {
+int convertYUVtoARGB(int y, int v, int u) {
     jint r,g,b;
  
     r = y + (int)1.402f*u;
@@ -406,9 +406,9 @@ jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420P(JNIEnv * e
 	jbyte * rgb = (*env)->GetByteArrayElements(env, dat, 0);
 
 	I420ToARGB((unsigned char *)yuv420p, width, 
-		   (unsigned char *)(yuv420p+width*height*4), width,
-		   (unsigned char *)(yuv420p+width*height*5/4), width,
-		   rgb, width,
+		   (unsigned char *)(yuv420p+width*height*5/4), width/2,
+		   (unsigned char *)(yuv420p+width*height), width/2,
+		   rgb, width*4,
 		   width, height
 		  );
 
