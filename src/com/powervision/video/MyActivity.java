@@ -6,13 +6,15 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
+import android.widget.Button;
 import com.powervision.video.media.codec.*;
 import com.powervision.video.media.extractor.DataExtractor;
 import com.powervision.video.media.extractor.ExtractorFactory;
 import com.powervision.video.media.extractor.IDataExtractor;
+import com.powervision.video.ui.MySurfaceView;
 
-public class MyActivity extends Activity implements OnFrameProcessedListener, SurfaceHolder.Callback
-{
+public class MyActivity extends Activity implements OnFrameProcessedListener, SurfaceHolder.Callback, View.OnClickListener {
     final boolean HASSURFACE = false;
     final boolean WINDOWDISPLAY = false;
 
@@ -22,6 +24,7 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     ICodec codec;
     IDataExtractor extractor;
     public MySurfaceView sv;
+    public Button capture_btn;
 
     /** Called when the activity is first created. */
     @Override
@@ -41,33 +44,15 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
             }
         } else {
             setContentView(R.layout.main);
-            sv = (MySurfaceView) findViewById(R.id.surface_view);
+            sv = (MySurfaceView)findViewById(R.id.surface_view);
+            capture_btn = (Button)findViewById(R.id.capture_btn);
+            capture_btn.setOnClickListener(this);
+            sv.setOnClickListener(this);
             prepare();
             sv.setFrameBitmap(StreamCodec.getFrameBitmap());
             sv.setHolder(sv.getHolder());
             new Thread(sv).start();
         }
-    }
-
-    @Override
-    public void onFrameProcessed(byte[] processedFrame) {
-        Log.i("TEST", "MyActivity onFrameProcessed");
-    }
-
-    @Override
-    public void surfaceCreated(SurfaceHolder surfaceHolder) {
-
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
-        if(HASSURFACE) {
-            mSurface = surfaceHolder.getSurface();
-        } else {
-            mSurface = null;
-        }
-
-        prepare();
     }
 
     private void prepare() {
@@ -90,7 +75,32 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     }
 
     @Override
+    public void onFrameProcessed(byte[] processedFrame) {
+        Log.i("TEST", "MyActivity onFrameProcessed");
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder surfaceHolder) {
+        if(HASSURFACE) {
+            mSurface = surfaceHolder.getSurface();
+        } else {
+            mSurface = null;
+        }
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
+
+        prepare();
+    }
+
+    @Override
     public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
 
+    }
+
+    @Override
+    public void onClick(View view) {
+        ((StreamCodec)codec).setCaptureFrame(true);
     }
 }

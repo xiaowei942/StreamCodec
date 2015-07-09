@@ -27,14 +27,15 @@ LOCAL_ARM_NEON := true
 endif
 
 LOCAL_SRC_FILES := \
-	ImageUtilEngine.c
+	source/image_convert.c
 
 # 默认包含的头文件路径
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH) \
-	$(LOCAL_PATH)/../libyuv/include
+	$(LOCAL_PATH)/../libyuv/include \
+	$(LOCAL_PATH)/../libjpeg/source
 
-LOCAL_SHARED_LIBRARIES := libutils libyuv
+LOCAL_SHARED_LIBRARIES := libutils libyuv libjpeg
 
 # -g 后面的一系列附加项目添加了才能使用 arm_neon.h 头文件 -mfloat-abi=softfp -mfpu=neon 使用 arm_neon.h 必须
 LOCAL_CFLAGS := -D__cpusplus -g -mfloat-abi=softfp -mfpu=neon -march=armv7-a -mtune=cortex-a8

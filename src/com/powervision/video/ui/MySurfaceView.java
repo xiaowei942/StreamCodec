@@ -1,4 +1,4 @@
-package com.powervision.video;
+package com.powervision.video.ui;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -9,6 +9,9 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import com.powervision.video.media.codec.StreamCodec;
+
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
 
 /**
  * Created by liwei on 15-7-8.
@@ -65,7 +68,6 @@ public class MySurfaceView extends SurfaceView implements
         Log.i("MySurfaceView", "draw !!!");
         Rect rect = new Rect();
         getDrawingRect(rect);
-        bitmap.setHasAlpha(true);
         canvas.drawBitmap(bitmap, null, rect, null);
         holder.unlockCanvasAndPost(canvas);
     }
@@ -83,6 +85,8 @@ public class MySurfaceView extends SurfaceView implements
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
     }
+
+    private native int writeJpegFileFromYUV420(String fileName, byte[] yuv420, int quality, int width, int height);
 }
 
 

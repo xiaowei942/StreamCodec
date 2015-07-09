@@ -1,21 +1,19 @@
 package com.powervision.video.media.codec;
 
 import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Rect;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.os.Environment;
+import android.text.format.Time;
 import android.util.Log;
 import android.view.Surface;
-import android.view.SurfaceHolder;
-import com.powervision.video.MyActivity;
 import com.powervision.video.media.extractor.IDataExtractor;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * Created by liwei on 15-7-4.
@@ -35,11 +33,13 @@ public class StreamCodec extends Codec implements ICodec {
     private static final boolean OUTPUT_YUV_TO_FILE = false;
     private static final boolean OUTPUT_RGB_TO_FILE = false;
 
-    private static byte[] brgb = new byte[1280 * 720 * 4];
+    private static byte[] brgb = null;
     private static int[] irgb = null;
 
-    static Bitmap bmp = null;
+    static Bitmap surfaceBitmap = null;
+    static Bitmap captureBitmap = null;
     public static boolean framePrepared = false;
+    private boolean captureFrame = false;
 
     long rawSize = 0;
     int decodedframes = 0;
@@ -50,7 +50,6 @@ public class StreamCodec extends Codec implements ICodec {
     static Surface mSurface = null;
     static IDataExtractor mExtractor = null;
 
-    FileOutputStream outputStream = null;
     FileOutputStream outputStream_out_yuv = null;
     FileOutputStream outputStream_out_rgb = null;
 
@@ -70,7 +69,7 @@ public class StreamCodec extends Codec implements ICodec {
     Object obj;
 
     public static Bitmap getFrameBitmap() {
-        return bmp;
+        return surfaceBitmap;
     }
 
     StreamCodec(CodecParam param) {
@@ -86,12 +85,20 @@ public class StreamCodec extends Codec implements ICodec {
         irgb = new int[1280 * 720];
 
         // Initialize the bitmap, with the replaced color
-        bmp = Bitmap.createBitmap(mWidth, mHeight,
+        surfaceBitmap = Bitmap.createBitmap(mWidth, mHeight,
                 Bitmap.Config.ARGB_8888);
         /* We cannot use following way to create a bitmap, or error occurs when setPixels
-            bmp = Bitmap.createBitmap(irgb, mWidth, mHeight,
+            surfaceBitmap = Bitmap.createBitmap(irgb, mWidth, mHeight,
                     Bitmap.Config.ARGB_8888);
         */
+    }
+
+    public boolean getCaptureFrame() {
+        return captureFrame;
+    }
+
+    public void setCaptureFrame(boolean isCap) {
+        captureFrame = isCap;
     }
 
     void initMediaCodec(ByteBuffer sps, ByteBuffer pps) {
@@ -139,6 +146,11 @@ public class StreamCodec extends Codec implements ICodec {
     }
 
     @Override
+    public ICodec asInterface() {
+        return (ICodec)this;
+    }
+
+    @Override
     public void processFrame(byte[] frame) {
 
         if (mListener != null) {
@@ -147,6 +159,27 @@ public class StreamCodec extends Codec implements ICodec {
         }
     }
 
+    private String makeCaptureFileName() {
+        Time time = new Time();
+        time.setToNow();
+        return new String(Environment.getExternalStorageDirectory() + "/" + time.year + "-" + time.month + "-" + time.monthDay + "-" + time.hour + "-" + time.minute + "-" + time.second + ".jpg");
+    }
+
+    public class Capture implements Runnable {
+        @Override
+        public void run() {
+            do {
+
+                try {
+                    String name = makeCaptureFileName();
+                    saveBitmapToFile(name, captureBitmap, 80);
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }while(false);
+        }
+    }
 
     public class Decode implements Runnable {
         @Override
@@ -243,6 +276,9 @@ public class StreamCodec extends Codec implements ICodec {
                         if (VERBOSE)
                             Log.d(TAG, "decoder output buffers changed");
                         decoderOutputBuffers = codec.getOutputBuffers();
+                        if(brgb == null) {
+                            brgb = new byte[mWidth * mHeight * 4];
+                        }
                     } else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                         // this happens before the first frame is returned
                         decoderOutputFormat = codec.getOutputFormat();
@@ -302,12 +338,22 @@ public class StreamCodec extends Codec implements ICodec {
                                     while (true) {
                                         if (!framePrepared) {
                                             //YUV420PtoARGB8888(irgb, data, mWidth, mHeight);
-                                            //bmp.setPixels(irgb, 0, mWidth, 0, 0, mWidth, mHeight);
+                                            //surfaceBitmap.setPixels(irgb, 0, mWidth, 0, 0, mWidth, mHeight);
                                             decodeYUV420P(brgb, data, mWidth, mHeight);
                                             ByteBuffer byteBuffer = ByteBuffer.wrap(brgb);
-                                            bmp.copyPixelsFromBuffer(byteBuffer);
+                                            surfaceBitmap.copyPixelsFromBuffer(byteBuffer);
                                             Log.i(TAG, "Decoded !!!");
+
+                                            if(getCaptureFrame()) {
+                                                captureBitmap = Bitmap.createBitmap(surfaceBitmap);
+                                            }
                                             framePrepared = true;
+
+                                            if(getCaptureFrame()) {
+                                                setCaptureFrame(false);
+                                                Capture cap = new Capture();
+                                                new Thread(cap).start();
+                                            }
                                             break;
                                         } else {
                                             try {
@@ -322,6 +368,12 @@ public class StreamCodec extends Codec implements ICodec {
                             }
                         }
 
+                        try {
+                            Thread.sleep(30);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
                         if (info.size == 0) {
                             if (VERBOSE) Log.d(TAG, "got empty frame");
                         } else {
@@ -332,26 +384,6 @@ public class StreamCodec extends Codec implements ICodec {
                             if (VERBOSE) Log.d(TAG, "output EOS");
                             outputDone = true;
                         }
-
-	            /*
-	                long curr = info.presentationTimeUs/1000;
-	                long off = System.currentTimeMillis() - startMs;
-    				while ( true ) {//curr > off) {
-    					try {
-    						Thread.sleep(50);
-    					} catch (InterruptedException e) {
-    						e.printStackTrace();
-    						break;
-    					}
-    				}
-    			*/
-
-//                        try {
-//                            Thread.sleep(50);
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                            break;
-//                        }
 
                         if (mSurface == null) {
                             codec.releaseOutputBuffer(decoderStatus, false /*render*/);
@@ -364,6 +396,30 @@ public class StreamCodec extends Codec implements ICodec {
         }
     }
 
+    private void saveBitmapToFile(String bitName, Bitmap bitmap, int quality) throws IOException {
+        File f = new File(bitName);
+        f.createNewFile();
+        FileOutputStream fOut = null;
+
+        try {
+            fOut = new FileOutputStream(f);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, fOut);
+        try {
+            fOut.flush();
+            fOut.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public int writeJpegFile(String fileName, byte[] yuv420, int quality, int width, int height) {
+        return writeJpegFileFromYUV420(fileName, yuv420, quality, width, height);
+    }
 
     static {
         System.loadLibrary("yuv2rgb");
@@ -373,4 +429,6 @@ public class StreamCodec extends Codec implements ICodec {
     private native int decodeYUV420SP(int[] data, byte[] yuv420, int width, int height);
     private native int decodeYUV420SP2(int[] data, byte[] yuv420, int width, int height);
     private native int YUV420PtoARGB8888(int[] data, byte[] buf, int width, int height);
+
+    private native int writeJpegFileFromYUV420(String fileName, byte[] yuv420, int quality, int width, int height);
 }

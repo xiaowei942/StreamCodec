@@ -12,7 +12,6 @@ public class Codec {
 
     public OnFrameProcessedListener mListener = null;
 
-    public ICodec asInterface() {return (ICodec)this;};
     public void initCodec(Object obj){};
     public void openCodec(){};
     public void closeCodec(){};

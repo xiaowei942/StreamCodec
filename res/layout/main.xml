@@ -4,8 +4,22 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     >
+<LinearLayout android:orientation="vertical"
+              android:layout_weight="1"
+              android:layout_width="fill_parent"
+              android:layout_height="wrap_content">
+    <com.powervision.video.ui.MySurfaceView android:id="@+id/surface_view"
+                                            android:layout_width="fill_parent"
+                                            android:layout_height="fill_parent"/>
 
-    <com.powervision.video.MySurfaceView android:id="@+id/surface_view"
-        android:layout_width="fill_parent" android:layout_height="fill_parent"/>
+</LinearLayout>
+<LinearLayout android:orientation="vertical"
+              android:layout_width="fill_parent"
+              android:layout_height="wrap_content">
+    <Button android:id="@+id/capture_btn"
+            android:text="保存"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"/>
+</LinearLayout>
 </LinearLayout>
 

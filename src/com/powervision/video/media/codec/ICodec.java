@@ -5,5 +5,6 @@ package com.powervision.video.media.codec;
  */
 public interface ICodec {
     public Codec asObject();
+    public ICodec asInterface();
     public void processFrame(byte[] frame);
 }
