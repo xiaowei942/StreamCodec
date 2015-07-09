@@ -15,11 +15,29 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := ImageUtilEngine.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/../libyuv/include
-LOCAL_SHARED_LIBRARIES := libutils libyuv
-LOCAL_PRELINK_MODULE := false 
 LOCAL_MODULE := libyuv2rgb
+LOCAL_PRELINK_MODULE := false
+
+LOCAL_ARM_MODE := arm
+TARGET_ARCH_ABI :=armeabi-v7a
+
+# 采用NEON优化技术
+ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)   
+LOCAL_ARM_NEON := true   
+endif
+
+LOCAL_SRC_FILES := \
+	ImageUtilEngine.c
+
+# 默认包含的头文件路径
+LOCAL_C_INCLUDES := \
+	$(LOCAL_PATH) \
+	$(LOCAL_PATH)/../libyuv/include
+
+LOCAL_SHARED_LIBRARIES := libutils libyuv
+
+# -g 后面的一系列附加项目添加了才能使用 arm_neon.h 头文件 -mfloat-abi=softfp -mfpu=neon 使用 arm_neon.h 必须
+LOCAL_CFLAGS := -D__cpusplus -g -mfloat-abi=softfp -mfpu=neon -march=armv7-a -mtune=cortex-a8
 LOCAL_LDLIBS    :=  -llog -ljnigraphics
 
 include $(BUILD_SHARED_LIBRARY)
