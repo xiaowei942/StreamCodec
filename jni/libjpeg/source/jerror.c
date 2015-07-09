@@ -19,6 +19,7 @@
  */
 
 /* this is not a core library module, so it doesn't define JPEG_INTERNALS */
+#include <stdlib.h> /* ADD BY WEI */
 #include "jinclude.h"
 #include "jpeglib.h"
 #include "jversion.h"
@@ -75,7 +76,7 @@ error_exit (j_common_ptr cinfo)
   /* Let the memory manager delete any temp files before we die */
   jpeg_destroy(cinfo);
 
-  exit(EXIT_FAILURE);
+  exit((int)EXIT_FAILURE);
 }
 
 
