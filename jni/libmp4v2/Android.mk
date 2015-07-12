@@ -8,7 +8,6 @@ LOCAL_CPPFLAGS := -O2 -fexceptions -DHAVE_SOCKLEN_T -DHAVE_STRUCT_IOVEC
 LOCAL_MODULE_TAGS := optional
 
 LOCAL_SRC_FILES:= \
-	source/src/main.cpp \
 	source/src/3gp.cpp source/src/atom_ac3.cpp \
 	source/src/atom_amr.cpp source/src/atom_avc1.cpp source/src/atom_avcC.cpp \
 	source/src/atom_chpl.cpp source/src/atom_colr.cpp source/src/atom_d263.cpp \
@@ -81,7 +80,7 @@ LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/source/libutil
 
 LOCAL_LDFLAGS := \
-        $(NDK)/sources/cxx-stl/gnu-libstdc++/4.4.3/libs/armeabi-v7a/libsupc++.a
+        $(NDK)/sources/cxx-stl/gnu-libstdc++/4.6/libs/armeabi-v7a/libsupc++.a
 
 LOCAL_LDLIBS := -llog
 

@@ -8,6 +8,7 @@ import android.text.format.Time;
 import android.util.Log;
 import android.view.Surface;
 import com.powervision.video.media.extractor.IDataExtractor;
+import com.powervision.video.writer.AVCWriter;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -66,6 +67,7 @@ public class StreamCodec extends Codec implements ICodec {
 
     MediaCodec.BufferInfo info;
 
+    AVCWriter writer = null;
     Object obj;
 
     public static Bitmap getFrameBitmap() {
@@ -91,6 +93,8 @@ public class StreamCodec extends Codec implements ICodec {
             surfaceBitmap = Bitmap.createBitmap(irgb, mWidth, mHeight,
                     Bitmap.Config.ARGB_8888);
         */
+
+        writer = new AVCWriter(mWidth, mHeight);
     }
 
     public boolean getCaptureFrame() {
@@ -197,13 +201,15 @@ public class StreamCodec extends Codec implements ICodec {
                         throw new RuntimeException(ioe);
                     }
                 } else {
-                    String fileName_out = DEBUG_OUT_FILE_NAME_BASE + mWidth + "x" + mHeight + ".rgb";
-                    try {
-                        outputStream_out_rgb = new FileOutputStream(fileName_out);
-                        Log.d(TAG, "decoded output will be saved as " + fileName_out);
-                    } catch (IOException ioe) {
-                        Log.w(TAG, "Unable to create debug decode output file " + fileName_out);
-                        throw new RuntimeException(ioe);
+                    if(OUTPUT_RGB_TO_FILE) {
+                        String fileName_out = DEBUG_OUT_FILE_NAME_BASE + mWidth + "x" + mHeight + ".rgb";
+                        try {
+                            outputStream_out_rgb = new FileOutputStream(fileName_out);
+                            Log.d(TAG, "decoded output will be saved as " + fileName_out);
+                        } catch (IOException ioe) {
+                            Log.w(TAG, "Unable to create debug decode output file " + fileName_out);
+                            throw new RuntimeException(ioe);
+                        }
                     }
                 }
             }
@@ -248,6 +254,8 @@ public class StreamCodec extends Codec implements ICodec {
                                 if (VERBOSE) Log.d(TAG, "passed " + size + " bytes to decoder" + " with flags - " + 0);
                             }
 
+
+                            //writer.write(0, buf, buf.length, 1, 1);
                             count++;
                         }
                     } else {
@@ -337,8 +345,8 @@ public class StreamCodec extends Codec implements ICodec {
 
                                     while (true) {
                                         if (!framePrepared) {
-                                            //YUV420PtoARGB8888(irgb, data, mWidth, mHeight);
-                                            //surfaceBitmap.setPixels(irgb, 0, mWidth, 0, 0, mWidth, mHeight);
+//                                            YUV420PtoARGB8888(irgb, data, mWidth, mHeight);
+//                                            surfaceBitmap.setPixels(irgb, 0, mWidth, 0, 0, mWidth, mHeight);
                                             decodeYUV420P(brgb, data, mWidth, mHeight);
                                             ByteBuffer byteBuffer = ByteBuffer.wrap(brgb);
                                             surfaceBitmap.copyPixelsFromBuffer(byteBuffer);
@@ -422,7 +430,10 @@ public class StreamCodec extends Codec implements ICodec {
     }
 
     static {
+        System.loadLibrary("yuv");
         System.loadLibrary("yuv2rgb");
+        System.loadLibrary("mp4v2");
+        System.loadLibrary("video");
     }
 
     private native int decodeYUV420P(byte[] data, byte[] yuv420, int width, int height);

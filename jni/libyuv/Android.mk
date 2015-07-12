@@ -1,5 +1,7 @@
 LOCAL_PATH := $(call my-dir)
 
+LOCAL_ARM_MODE := arm
+
 common_SRC_FILES := \
 	source/compare.cc                           \
 	source/compare_common.cc                    \
@@ -46,11 +48,12 @@ common_LDFLAGS :=
 TARGET_ARCH_ABI :=armeabi-v7a
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
-	common_CFLAGS += -march=armv7-a -mfloat-abi=softfp -mfpu=neon
-	common_LDFLAGS += -Wl,--fix-cortex-a8
+common_CFLAGS += -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+#common_CFLAGS := -D__STDC_CONSTANT_MACROS -Wno-sign-compare -Wno-switch -Wno-pointer-sign -DHAVE_NEON=1 -mfpu=neon -mfloat-abi=softfp -fPIC -DANDROID
+common_LDFLAGS += -Wl,--fix-cortex-a8
 
 # 采用NEON优化技术   
-LOCAL_ARM_NEON := true
+LOCAL_ARM_NEON := false
 endif
 
 

@@ -15,7 +15,7 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := libyuv2rgb
+LOCAL_MODULE := libvideo
 LOCAL_PRELINK_MODULE := false
 
 LOCAL_ARM_MODE := arm
@@ -27,19 +27,19 @@ LOCAL_ARM_NEON := true
 endif
 
 LOCAL_SRC_FILES := \
-	source/image_convert.c
+	source/mp4_writer.cpp
 
 # 默认包含的头文件路径
 LOCAL_C_INCLUDES := \
-	$(LOCAL_PATH) \
-	$(LOCAL_PATH)/../libyuv/include \
-	$(LOCAL_PATH)/../libjpeg/source
+	$(LOCAL_PATH)/include \
+	$(LOCAL_PATH)/../libmp4v2/source \
+	$(LOCAL_PATH)/../libmp4v2/source/include \
+	$(LOCAL_PATH)/../libmp4v2/source/libplatform
 
-LOCAL_SHARED_LIBRARIES := libutils libyuv libjpeg
+LOCAL_SHARED_LIBRARIES := libmp4v2
 
 # -g 后面的一系列附加项目添加了才能使用 arm_neon.h 头文件 -mfloat-abi=softfp -mfpu=neon 使用 arm_neon.h 必须
-#LOCAL_CFLAGS := -D__cpusplus -g -mfloat-abi=softfp -mfpu=neon -march=armv7-a -mtune=cortex-a8
-LOCAL_CFLAGS := -D__STDC_CONSTANT_MACROS -Wno-sign-compare -Wno-switch -Wno-pointer-sign -DHAVE_NEON=1 -mfpu=neon -mfloat-abi=softfp -fPIC -DANDROID
+LOCAL_CFLAGS := -D__cpusplus -g -mfloat-abi=softfp -mfpu=neon -march=armv7-a -mtune=cortex-a8
 LOCAL_LDLIBS    :=  -llog -ljnigraphics
 
 include $(BUILD_SHARED_LIBRARY)

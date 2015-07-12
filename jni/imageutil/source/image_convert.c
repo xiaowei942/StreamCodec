@@ -6,7 +6,7 @@
 #include <math.h>
 #include <libyuv/convert_from.h>
 #include <jpeglib.h>
-#define LOG_TAG "Spore.meitu"
+#define LOG_TAG "image_convert"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
@@ -181,8 +181,9 @@ void initTable()
 	}
 }
 
-	jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIEnv * env,
-			jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height) {
+jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIEnv * env,
+	jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height) {
+
 	jbyte * yuv420sp = (*env)->GetByteArrayElements(env, buf, 0);
 	jint * rgb = (*env)->GetIntArrayElements(env, dat, 0);
 

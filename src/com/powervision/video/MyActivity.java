@@ -48,10 +48,8 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
             capture_btn = (Button)findViewById(R.id.capture_btn);
             capture_btn.setOnClickListener(this);
             sv.setOnClickListener(this);
+            sv.getHolder().addCallback(this);
             prepare();
-            sv.setFrameBitmap(StreamCodec.getFrameBitmap());
-            sv.setHolder(sv.getHolder());
-            new Thread(sv).start();
         }
     }
 
@@ -90,8 +88,9 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
 
     @Override
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
-
-        prepare();
+        sv.setFrameBitmap(StreamCodec.getFrameBitmap());
+        sv.setHolder(sv.getHolder());
+        new Thread(sv).start();
     }
 
     @Override

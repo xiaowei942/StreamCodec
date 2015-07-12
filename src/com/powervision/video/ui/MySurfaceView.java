@@ -44,7 +44,6 @@ public class MySurfaceView extends SurfaceView implements
     }
 
     public void setFrameBitmap(Bitmap bmp) {
-
         bitmap = bmp;
     }
 
@@ -56,7 +55,7 @@ public class MySurfaceView extends SurfaceView implements
                 StreamCodec.framePrepared = false;
             }
             try {
-                Thread.sleep(60);
+                Thread.sleep(20);
             } catch (Exception e) {
                 e.printStackTrace();
             }
