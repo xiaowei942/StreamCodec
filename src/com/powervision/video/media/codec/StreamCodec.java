@@ -68,6 +68,7 @@ public class StreamCodec extends Codec implements ICodec {
     MediaCodec.BufferInfo info;
 
     AVCWriter writer = null;
+    static boolean closeWriter = false;
     Object obj;
 
     public static Bitmap getFrameBitmap() {
@@ -84,7 +85,7 @@ public class StreamCodec extends Codec implements ICodec {
         mWidth = param.width;
         mHeight = param.height;
 
-        irgb = new int[1280 * 720];
+        irgb = new int[mWidth * mHeight];
 
         // Initialize the bitmap, with the replaced color
         surfaceBitmap = Bitmap.createBitmap(mWidth, mHeight,
@@ -95,6 +96,10 @@ public class StreamCodec extends Codec implements ICodec {
         */
 
         writer = new AVCWriter(mWidth, mHeight);
+    }
+
+    public static void setCloseWriter(boolean close) {
+        closeWriter = close;
     }
 
     public boolean getCaptureFrame() {
@@ -173,7 +178,6 @@ public class StreamCodec extends Codec implements ICodec {
         @Override
         public void run() {
             do {
-
                 try {
                     String name = makeCaptureFileName();
                     saveBitmapToFile(name, captureBitmap, 80);
@@ -226,38 +230,41 @@ public class StreamCodec extends Codec implements ICodec {
                     int inputBufferIndex = 0;
                     byte[] buf = null;
                     if ((buf = mExtractor.getFrame()) != null) {
-                        inputBufferIndex = codec.dequeueInputBuffer(-1);
-                        if (inputBufferIndex >= 0) {
-                            ByteBuffer bf = ByteBuffer.wrap(buf, 0, buf.length);
+//                        inputBufferIndex = codec.dequeueInputBuffer(-1);
+//                        if (inputBufferIndex >= 0) {
+//                            ByteBuffer bf = ByteBuffer.wrap(buf, 0, buf.length);
+//
+//                            bf.position(0);
+//                            bf.limit(buf.length);
+//
+//                            if (OUTPUTBUFFERS) {
+//                                byte[] temp = new byte[10240];
+//                                bf.get(temp, 0, buf.length);
+//                                System.out.println("Encoded buffer: " + count);
+//                                System.out.println("------");
+//                                for (int i = 0; i < buf.length; i++)
+//                                    System.out.print("0x" + Integer.toHexString(temp[i]) + "  \n");
+//                                System.out.println("------");
+//                            }
+//
+//                            ByteBuffer inputBuffer = decoderInputBuffers[inputBufferIndex];
+//                            inputBuffer.clear();
+//                            inputBuffer.put(buf);
+//                            if (count == 3) {
+//                                codec.queueInputBuffer(inputBufferIndex, 0, buf.length, count * 1000, 0);
+//                                if (VERBOSE) Log.d(TAG, "passed " + size + " bytes to decoder" + " with flags - " + 1);
+//                            } else {
+//                                codec.queueInputBuffer(inputBufferIndex, 0, buf.length, count * 1000, 0);
+//                                if (VERBOSE) Log.d(TAG, "passed " + size + " bytes to decoder" + " with flags - " + 0);
+//                            }
 
-                            bf.position(0);
-                            bf.limit(buf.length);
-
-                            if (OUTPUTBUFFERS) {
-                                byte[] temp = new byte[10240];
-                                bf.get(temp, 0, buf.length);
-                                System.out.println("Encoded buffer: " + count);
-                                System.out.println("------");
-                                for (int i = 0; i < buf.length; i++)
-                                    System.out.print("0x" + Integer.toHexString(temp[i]) + "  \n");
-                                System.out.println("------");
-                            }
-
-                            ByteBuffer inputBuffer = decoderInputBuffers[inputBufferIndex];
-                            inputBuffer.clear();
-                            inputBuffer.put(buf);
-                            if (count == 3) {
-                                codec.queueInputBuffer(inputBufferIndex, 0, buf.length, count * 1000, 0);
-                                if (VERBOSE) Log.d(TAG, "passed " + size + " bytes to decoder" + " with flags - " + 1);
+                            if(closeWriter) {
+                                writer.close();
                             } else {
-                                codec.queueInputBuffer(inputBufferIndex, 0, buf.length, count * 1000, 0);
-                                if (VERBOSE) Log.d(TAG, "passed " + size + " bytes to decoder" + " with flags - " + 0);
+                                writer.writeFrame(buf, buf.length, 1);
                             }
-
-
-                            //writer.write(0, buf, buf.length, 1, 1);
                             count++;
-                        }
+//                        }
                     } else {
                         inputDone = true;
                         inputBufferIndex = codec.dequeueInputBuffer(TIMEOUT_USEC);
@@ -270,58 +277,58 @@ public class StreamCodec extends Codec implements ICodec {
                         }
                     }
                 }
+if(false) {
+    if (decoderconfigured) {
+        int decoderStatus = codec.dequeueOutputBuffer(info, TIMEOUT_USEC);
+        if (decoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
+            // no output available yet
+            if (VERBOSE)
+                Log.d(TAG, "no output from decoder available");
+        } else if (decoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
+            // The storage associated with the direct ByteBuffer may already be unmapped,
+            // so attempting to access data through the old output buffer array could
+            // lead to a native crash.
+            if (VERBOSE)
+                Log.d(TAG, "decoder output buffers changed");
+            decoderOutputBuffers = codec.getOutputBuffers();
+            if (brgb == null) {
+                brgb = new byte[mWidth * mHeight * 4];
+            }
+        } else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+            // this happens before the first frame is returned
+            decoderOutputFormat = codec.getOutputFormat();
+            if (VERBOSE)
+                Log.d(TAG, "decoder output format changed: " + decoderOutputFormat);
+        } else if (decoderStatus < 0) {
+            //fail("unexpected result from deocder.dequeueOutputBuffer: " + decoderStatus);
+        } else {  // decoderStatus >= 0
+            ByteBuffer outputFrame = decoderOutputBuffers[decoderStatus];
 
-                if (decoderconfigured) {
-                    int decoderStatus = codec.dequeueOutputBuffer(info, TIMEOUT_USEC);
-                    if (decoderStatus == MediaCodec.INFO_TRY_AGAIN_LATER) {
-                        // no output available yet
-                        if (VERBOSE)
-                            Log.d(TAG, "no output from decoder available");
-                    } else if (decoderStatus == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-                        // The storage associated with the direct ByteBuffer may already be unmapped,
-                        // so attempting to access data through the old output buffer array could
-                        // lead to a native crash.
-                        if (VERBOSE)
-                            Log.d(TAG, "decoder output buffers changed");
-                        decoderOutputBuffers = codec.getOutputBuffers();
-                        if(brgb == null) {
-                            brgb = new byte[mWidth * mHeight * 4];
+            if (mSurface == null) {
+                //outputFrame.position(info.offset);
+                //outputFrame.limit(info.offset + info.size);
+                rawSize += info.size;
+
+                if (OUTPUT_YUV_TO_FILE) {
+                    if (outputStream_out_yuv != null) {
+                        byte[] data = new byte[info.size];
+                        outputFrame.get(data);
+                        outputFrame.position(info.offset);
+                        try {
+                            outputStream_out_yuv.write(data);
+                        } catch (IOException ioe) {
+                            Log.w(TAG, "failed writing debug data to file");
+                            throw new RuntimeException(ioe);
                         }
-                    } else if (decoderStatus == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                        // this happens before the first frame is returned
-                        decoderOutputFormat = codec.getOutputFormat();
-                        if (VERBOSE)
-                            Log.d(TAG, "decoder output format changed: " + decoderOutputFormat);
-                    } else if (decoderStatus < 0) {
-                        //fail("unexpected result from deocder.dequeueOutputBuffer: " + decoderStatus);
-                    } else {  // decoderStatus >= 0
-                        ByteBuffer outputFrame = decoderOutputBuffers[decoderStatus];
+                        Log.w(TAG, "successful writing debug data to file");
+                    }
+                } else {
+                    if (OUTPUT_RGB_TO_FILE && (outputStream_out_rgb != null)) {
+                        byte[] data = new byte[info.size];
+                        outputFrame.get(data);
+                        outputFrame.position(info.offset);
 
-                        if (mSurface == null) {
-                            //outputFrame.position(info.offset);
-                            //outputFrame.limit(info.offset + info.size);
-                            rawSize += info.size;
-
-                            if (OUTPUT_YUV_TO_FILE) {
-                                if (outputStream_out_yuv != null) {
-                                    byte[] data = new byte[info.size];
-                                    outputFrame.get(data);
-                                    outputFrame.position(info.offset);
-                                    try {
-                                        outputStream_out_yuv.write(data);
-                                    } catch (IOException ioe) {
-                                        Log.w(TAG, "failed writing debug data to file");
-                                        throw new RuntimeException(ioe);
-                                    }
-                                    Log.w(TAG, "successful writing debug data to file");
-                                }
-                            } else {
-                                if (OUTPUT_RGB_TO_FILE && (outputStream_out_rgb != null)) {
-                                    byte[] data = new byte[info.size];
-                                    outputFrame.get(data);
-                                    outputFrame.position(info.offset);
-
-                                    try {
+                        try {
 //                                        for(int i=0; i<irgb.length; i++) {
 //                                            byte[] tmp = new byte[3];
 //                                            //tmp[0] = (byte)((irgb[i]>>24) & 0xff);
@@ -332,74 +339,75 @@ public class StreamCodec extends Codec implements ICodec {
 //                                        }
 //                                        outputStream_out_rgb.close();
 
-                                    } catch (Exception ioe) {
-                                        Log.w(TAG, "failed writing debug data to file");
-                                        throw new RuntimeException(ioe);
-                                    }
-                                    Log.w(TAG, "successful writing debug data to file");
-                                } else {
+                        } catch (Exception ioe) {
+                            Log.w(TAG, "failed writing debug data to file");
+                            throw new RuntimeException(ioe);
+                        }
+                        Log.w(TAG, "successful writing debug data to file");
+                    } else {
 
-                                    byte[] data = new byte[info.size];
-                                    outputFrame.get(data);
-                                    outputFrame.position(info.offset);
+                        byte[] data = new byte[info.size];
+                        outputFrame.get(data);
+                        outputFrame.position(info.offset);
 
-                                    while (true) {
-                                        if (!framePrepared) {
+                        while (true) {
+                            if (!framePrepared) {
 //                                            YUV420PtoARGB8888(irgb, data, mWidth, mHeight);
 //                                            surfaceBitmap.setPixels(irgb, 0, mWidth, 0, 0, mWidth, mHeight);
-                                            decodeYUV420P(brgb, data, mWidth, mHeight);
-                                            ByteBuffer byteBuffer = ByteBuffer.wrap(brgb);
-                                            surfaceBitmap.copyPixelsFromBuffer(byteBuffer);
-                                            Log.i(TAG, "Decoded !!!");
+//                                            decodeYUV420P(brgb, data, mWidth, mHeight);
+//                                            ByteBuffer byteBuffer = ByteBuffer.wrap(brgb);
+//                                            surfaceBitmap.copyPixelsFromBuffer(byteBuffer);
+                                Log.i(TAG, "Decoded !!!");
 
-                                            if(getCaptureFrame()) {
-                                                captureBitmap = Bitmap.createBitmap(surfaceBitmap);
-                                            }
-                                            framePrepared = true;
+                                if (getCaptureFrame()) {
+                                    captureBitmap = Bitmap.createBitmap(surfaceBitmap);
+                                }
+                                framePrepared = true;
 
-                                            if(getCaptureFrame()) {
-                                                setCaptureFrame(false);
-                                                Capture cap = new Capture();
-                                                new Thread(cap).start();
-                                            }
-                                            break;
-                                        } else {
-                                            try {
-                                                Thread.sleep(10);
-                                                break;
-                                            } catch (InterruptedException e) {
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                    }
+                                if (getCaptureFrame()) {
+                                    setCaptureFrame(false);
+                                    Capture cap = new Capture();
+                                    new Thread(cap).start();
+                                }
+                                break;
+                            } else {
+                                try {
+                                    Thread.sleep(10);
+                                    break;
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
                                 }
                             }
                         }
-
-                        try {
-                            Thread.sleep(30);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-
-                        if (info.size == 0) {
-                            if (VERBOSE) Log.d(TAG, "got empty frame");
-                        } else {
-                            if (VERBOSE) Log.d(TAG, "decoded, checking frame " + decodedframes++);
-                        }
-
-                        if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
-                            if (VERBOSE) Log.d(TAG, "output EOS");
-                            outputDone = true;
-                        }
-
-                        if (mSurface == null) {
-                            codec.releaseOutputBuffer(decoderStatus, false /*render*/);
-                        } else {
-                            codec.releaseOutputBuffer(decoderStatus, true /*render*/);
-                        }
                     }
                 }
+            }
+
+            try {
+                Thread.sleep(30);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            if (info.size == 0) {
+                if (VERBOSE) Log.d(TAG, "got empty frame");
+            } else {
+                if (VERBOSE) Log.d(TAG, "decoded, checking frame " + decodedframes++);
+            }
+
+            if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
+                if (VERBOSE) Log.d(TAG, "output EOS");
+                outputDone = true;
+            }
+
+            if (mSurface == null) {
+                codec.releaseOutputBuffer(decoderStatus, false /*render*/);
+            } else {
+                codec.releaseOutputBuffer(decoderStatus, true /*render*/);
+            }
+        }
+    }
+}
             }
         }
     }

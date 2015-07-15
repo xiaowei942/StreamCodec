@@ -1,442 +1,240 @@
-#include <jni.h>
-#include <time.h>
-#include <mp4v2/mp4v2.h>
-#include <config.h>
-#include <cstdio>
-#include <cstdlib>
-#include <vector>
-#include <iostream>
-#include <arpa/inet.h>
-#include <android/log.h>
+#include <string.h>
+#include <assert.h>
+#include "mp4_writer.h"
 
-#define LOG_TAG "MP4_WRITER"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
-
-using namespace std;
-
-typedef unsigned char byte;
-#define MAX_GROUP 2
-#define MAX_VENC 2
-#define H264_IFRAME 1
-#define H264_SPSPPS 1
-
-bool is_nalu(byte * data, size_t size, int& type) {
-	if(size < 4)return false;
-
-		if(data[0] == 0 && data[1] == 0) {
-		if(data[2] == 1){
-			type = data[3] & 0x1F;
-			return true;
-		}
-		if(data[2] == 0 && data[3] == 1) {
-			if(size < 5) 
-				return false;
-			type = data[4] & 0x1F;
-		return true;
-		}
-	}
-	return false;
-}
-
-void deal_sps(byte * data, size_t size, vector<byte>& sps) {
-	for(size_t i = 0; i < size; ++i){
-		int nalu_type = -1;
-		if(is_nalu(&data[i], size - i, nalu_type)) {
-			if(nalu_type == 1 || nalu_type == 5 || nalu_type == 6){ // slice, sei
-				return;
-			}
-		}
-		sps.push_back(data[i]);
-	}
-}
-
-int findNalPos( byte* data, size_t size, int& type )
+Mp4_Writer::Mp4_Writer(int width, int height):
+			mp4_fps(25),
+			isFirstSPS(false),
+			isFirstPPS(false),
+			video_frame_number(1),
+			extractor(NULL),
+			mp4_file(NULL),
+			video_track_id(MP4_INVALID_TRACK_ID),
+			video_time_scale(90000),
+			video_start_time_stamp(0),
+			video_payload_data(NULL),
+			video_payload_data_buffer_size(65535),
+			video_temp_buffer(NULL),
+			video_temp_buffer_size(65535*10),
+			video_h264_sps(NULL),
+			video_h264_sps_size(32),
+			video_h264_pps(NULL),
+			video_h264_pps_size(32)
 {
-	size_t total = size;
-	while( !is_nalu( &data[total-size], size, type ) ){
-		--size;
-	}
-	return total-size;
+	video_width = width;
+	video_height = height;
+	memset(mp4_filename, '\0', 256);
+	video_h264_sps = (unsigned char *)malloc(video_h264_sps_size*sizeof(unsigned char));
+	video_h264_pps = (unsigned char *)malloc(video_h264_pps_size*sizeof(unsigned char));
+	video_payload_data = (unsigned char *)malloc(video_payload_data_buffer_size*sizeof(unsigned char));
 }
 
-void make_dsi( unsigned int sampling_frequency_index, unsigned int channel_configuration, unsigned char* dsi );
-int get_sr_index(unsigned int sampling_frequency);
-
-class mp4v2_imp{
-	bool   m_b_open;
-	bool   video_only;
-	std::string  m_str_name;
-	MP4FileHandle m_file;
-	MP4TrackId  m_video;
-	MP4TrackId  m_audio;
-public:
-	mp4v2_imp():
-		 video_only(true),
-		 m_b_open(false),
-		 m_str_name(""),
-		 m_file(NULL),
-		 m_video(0),
-		 m_audio(0)
-	{
-
-	}
-
-	~mp4v2_imp()
-	{
-		close();
-	}
-
-	int open( const char* name, int w, int h, int frame, int sampler, int pernum, unsigned char *sps, int sps_size)
-	{
-		//int type = 0;
-		//int pos = findNalPos( &sps[8], sps_size - 8, type );
-		//pos += 8;
-		//int idx = 0;
-		//printf( "OpenFile: name:%s, ", name );
-		//for( int i = 0; i < sps_size; ++i )
-		// printf( "%#x,", sps[i] );
-		//printf( "\n" );
-		//printf( "OpenFile: name:%s, sps_len:%d, pps_len:%d, pps[0]=%#x,pps[1]=%#x,pps[2]=%#x,pps[3]=%#x\n", name, sps_size, sps_size - pos, sps[pos + 4], sps[pos + 5], sps[pos + 6], sps[pos + 7] );
-		//int sps_len = 22;
-		//int pps_len = sps_size - pos - 4;
-		//unsigned char sps_header[40], pps_header[40];
-		//memcpy( sps_header, sps + 4, sps_len );
-		//memcpy( pps_header, sps + pos + 4, pps_len );
-		//printf( "pps_len:%d, pps_len:%d\n", pps_len, sps_len );
-		
-		LOGI("Into open");
-
-		m_str_name = name;
-		m_file = MP4CreateEx( name, 0, 1, 1, 0, 0, 0, 0);//创建mp4文件
-		if ( m_file == MP4_INVALID_FILE_HANDLE)
-		{
-			LOGE("open file fialed.\n");
-			return -1;
-		}
-
-		MP4SetTimeScale( m_file, 90000);
-
-		//添加h264 track   
-		m_video = MP4AddH264VideoTrack( m_file, 90000, 90000 / 26, w, h,
-		0, //sps[5], //sps[1] AVCProfileIndication
-		0, //sps[6], //sps[2] profile_compat
-		0, //sps[7], //sps[3] AVCLevelIndication
-		0); //3); // 4 bytes length before each NAL unit
-
-		if ( m_video == MP4_INVALID_TRACK_ID)
-		{
-			LOGE("add video track failed.\n");
-			return -2;
-		}
-		MP4SetVideoProfileLevel( m_file, 0x7f);
-		
-		if(!video_only) {
-			//添加aac音频; //sampler与总时长成反比， pernum与总时长成正比. MP4_MPEG2_AAC_MAIN_AUDIO_TYPE这个值可以参照MP4Info例子程序的值解释。
-			m_audio = MP4AddAudioTrack(m_file, 44100, 1024, MP4_MPEG2_AAC_MAIN_AUDIO_TYPE );
-			if ( m_audio == MP4_INVALID_TRACK_ID)
-			{
-				LOGE("add audio track failed.\n");
-				return -3;
-			}
-			MP4SetAudioProfileLevel( m_file, 0x2 );   ////0x2 ?
-
-			//MP4AddH264SequenceParameterSet( m_file, m_video, sps_header, sps_len ); 
-			//MP4AddH264PictureParameterSet( m_file, m_video, pps_header, pps_len ); 
-			//
-			uint8_t pConfig[2];
-			uint32_t configSize = 2;
-			//make_dsi( get_sr_index( 44100 ), 2, pConfig );
-			if( !MP4SetTrackESConfiguration( m_file, m_audio, pConfig, configSize ) )
-			{
-				LOGE("MP4SetTrackESConfiguration call failed.\n");
-			}
-
-		}
-		m_b_open = true;
-
-		LOGI("Out open");
-		return 0;
-	}
-
-	int close()
-	{
-		LOGI("Into close");
-		MP4Close( m_file );
-		m_file = 0;
-		//MP4Optimize( m_str_name.c_str() );
-	}
-
-	////frametype: 1 keyframe, other 0; 还有这里的关键帧的参数貌似没效果，我一直都设为1，也没有问题。
-	int write_video( unsigned char * data, size_t size, int frametype, unsigned long long ts )
-	{
-		LOGI("Now Into write_video");
-		if( NULL == m_file || m_video == 0 ) 
-			return -1;
-		
-		LOGI("data: 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x", data[0], data[1], data[2], data[3], data[4], data[5]);
-		bool bRtn = MP4WriteSample( m_file, m_video, data, size, MP4_INVALID_DURATION, 0, 1 );
-		LOGI("Now Out write_video");
-		return bRtn ? 0 : -2;
-	}
-
-	int write_audio( unsigned char * data, size_t size, unsigned long long ts )
-	{
-		if( NULL == m_file || m_audio == 0 ) 
-			return -1;
-
-		bool bRtn = MP4WriteSample( m_file, m_audio, data, size, MP4_INVALID_DURATION, 0, 1 );
-		return bRtn ? 0 : -2;
-	}
-};
-
-struct video {
-	int cap_width;
-	int cap_height;
-	int framerate;
-};
-
-struct audio {
-	int samplerate;
-};
-
-struct g_group {
-	struct video vi;
-	struct audio ai;
-}g_group[0];
-
-class write_mp4{
-	mp4v2_imp* m_mp4;
-	bool m_b_loop;
-	string file_path;
-public:
-	write_mp4(const char *path)
-	: m_b_loop( false )
-	{
-		m_mp4 = 0;
-		file_path = path;
-		//memset( m_mp4, 0, sizeof(m_mp4) );
-	}
-
-	~write_mp4()
-	{
-		for( int i = 0; i < MAX_GROUP*MAX_VENC; ++i )
-		{
-			close( i );
-		}
-	}
-
-	void write_video(int chn, unsigned char * data, size_t size, int frametype, unsigned long long ts )
-	{
-		LOGI("Into write_video");
-		static time_t tt_old[MAX_GROUP*MAX_VENC] = {0};
-		if( data == 0 || size == 0 ) return;
-		int iRtn = 0;
-		if( !m_mp4 )
-		{
-			if( H264_SPSPPS == frametype ) {
-				std::vector< unsigned char > v;
-				deal_sps( data, size, v );
-				m_mp4 = new mp4v2_imp(); if( !m_mp4 ) return;
-
-				LOGI("Now prepare to open");
-				//iRtn = m_mp4[chn]->open( get_name( chn ).append( ".mp4" ).c_str(), 
-				iRtn = m_mp4->open( (file_path + get_name( chn )).append( ".mp4" ).c_str(), 
-							g_group[0].vi.cap_width, 
-							g_group[0].vi.cap_height, 
-							g_group[0].vi.framerate, 
-							g_group[0].ai.samplerate, 
-							1024, 
-							&v[0], 
-							v.size() );
-				if( iRtn != 0 ) 
-					return;
-
-				LOGI("Now success open");
-				tt_old[chn] = time(0);
-			}
-		}
-
-		if( m_mp4 )
-		{
-			m_mp4->write_video( data, size, frametype == H264_IFRAME ? 1 : 0, ts );
-		}
-
-		time_t tt_new = time(0);
-		if( tt_new - tt_old[chn] > 240 ) 
-			close( chn );
-	}
-
-	void write_audio( int chn, unsigned char* data, size_t size, int frametype, unsigned long long ts )
-	{
-		if( m_mp4 )
-		{
-			m_mp4->write_audio( data + 7, size - 7, ts );
-		}
-	}
-
-	void close( int chn )
-	{
-		if( m_mp4 ){
-			m_mp4->close();
-			delete m_mp4;
-			m_mp4 = 0;
-		}
-	}
-
-private:
-	string get_name( int chn_id )
-	{
-		string strRet = "1900-01-01";
-		time_t tm     = time(0);
-		struct tm *newtime = localtime( ( const time_t * )( &tm ) );
-		if( newtime )
-		{
-			char buf[128];
-			sprintf( buf, "%02d-%04d%02d%02d-%02d%02d%02d", chn_id, newtime->tm_year + 1900, newtime->tm_mon+1, newtime->tm_mday,newtime->tm_hour,newtime->tm_min,newtime->tm_sec );
-			strRet = buf;
-		}
-		return strRet;
-	}
-};
-
-
-
-
-/**************************  Following are jni fuctions  *****************************/
-
-/*
- * Class:     com_powervision_video_writer_AVCWriter
- * Method:    nativeinit
- * Signature: (Ljava/lang/String;III)I
- */
-write_mp4 * JNICALL Java_com_powervision_video_writer_AVCWriter_native_1init
-  (JNIEnv *env, jobject thiz, jstring path, jint width, jint height, jint frame_rate) {
-	LOGI("Into init with width:%d  height:%d", width, height);
-	g_group[0].vi.cap_width = width;
-	g_group[0].vi.cap_height = height;
-	g_group[0].vi.framerate = frame_rate;
-	const char *file_path = env->GetStringUTFChars(path, 0);
-	write_mp4 *p = new write_mp4(file_path);
-	env->ReleaseStringUTFChars(path, file_path);
-	LOGI("Out init");
-	if(!p) {
-		return 0;
-	}
-	return p;
-}
-
-/*
- * Class:     com_powervision_video_writer_AVCWriter
- * Method:    native_open
- * Signature: (I)I
- */
-jint JNICALL Java_com_powervision_video_writer_AVCWriter_native_1open
-  (JNIEnv *env, jobject thiz, write_mp4 *obj) {
+Mp4_Writer::~Mp4_Writer() {
 
 }
 
-/*
- * Class:     com_powervision_video_writer_AVCWriter
- * Method:    native_write
- * Signature: (II[BJIJ)I
- */
-jint JNICALL Java_com_powervision_video_writer_AVCWriter_native_1write
-  (JNIEnv *env, jobject thiz, write_mp4 *obj, jint channel, jbyteArray data, jlong size, jint frame_type, jlong ts) {
-	LOGI("WEI-->Into write");
-	jbyte *pdata = env->GetByteArrayElements(data, 0);	  
-	obj->write_video(channel, (unsigned char *)pdata, size, frame_type, ts);
-	env->ReleaseByteArrayElements(data, pdata, 0);
-	LOGI("WEI-->Out write");
+void Mp4_Writer::SetMp4Fps(int fps) {
+	mp4_fps = fps;
+}
+
+void Mp4_Writer::SetMp4FileName(const char *file_name) {
+	assert(file_name != NULL);
+	strcpy(mp4_filename, file_name);
+}
+
+int Mp4_Writer::DoStartRecord() {
+	mp4_file = MP4CreateEx(mp4_filename, 0, 1, 1, 0, 0, 0, 0);
+	if(mp4_file == MP4_INVALID_FILE_HANDLE) {
+		return -1;
+	}
+
+	if(MP4SetTimeScale(mp4_file, video_time_scale) != 1) {
+		return -1;
+	}
 	return 0;
 }
 
-/*
- * Class:     com_powervision_video_writer_AVCWriter
- * Method:    native_close
- * Signature: (I)I
- */
-jint JNICALL Java_com_powervision_video_writer_AVCWriter_native_1close
-  (JNIEnv *env, jobject thiz, write_mp4 *obj) {
+int Mp4_Writer::DoStopRecord() {
+	if(video_payload_data) {
+		free(video_payload_data);
+		video_payload_data_buffer_size = 0;
+	}	
 
+	MP4Close(mp4_file);
+	mp4_file = NULL;
 }
 
-/*
- * Class:     com_powervision_video_writer_AVCWriter
- * Method:    native_release
- * Signature: (I)V
- */
-void JNICALL Java_com_powervision_video_writer_AVCWriter_native_1release
-  (JNIEnv *env, jobject thiz, write_mp4 *obj) {
-	if(obj) {
-		delete obj;
+void Mp4_Writer::WriteEncodedVideoFrame(const unsigned char *payload_data, unsigned int payload_size, unsigned int time_stamp) {
+	bool foundIDR = false;
+	//Write 1st frame
+	if(video_frame_number == 1) {
+		unsigned char *data_header = const_cast<unsigned char *>(payload_data);
+		unsigned int header_len = payload_size;
+
+		unsigned char nalu_type = 0;
+		if( (payload_data[0] == 0x0) && (payload_data[1] == 0x0) && (payload_data[2] == 0x0) && (payload_data[3] == 0x01) ) {
+			nalu_type = payload_data[4] & 0x1F;
+			data_header = const_cast <unsigned char *>(payload_data) + 4;
+			header_len = payload_size - 4;
+		} else {
+			nalu_type = (*(payload_data)) & 0x1F;
+		}
+		
+		if(nalu_type != 0x07) {
+			return;
+		}
+		
+
+		unsigned char avc_profile = *(data_header + 1);
+		unsigned char profile_compat = *(data_header + 2);
+		unsigned char avc_level = *(data_header + 3);
+
+		video_track_id = MP4AddH264VideoTrack(mp4_file, video_time_scale, video_time_scale/mp4_fps, video_width, video_height, avc_profile, profile_compat, avc_level, 3);
+
+		if(video_track_id == MP4_INVALID_TRACK_ID) {
+			return;
+		}
+
+		MP4SetVideoProfileLevel(mp4_file, 0x7F);
+
+	}
+
+	if(video_payload_data_buffer_size < payload_size) {
+		video_payload_data = (unsigned char *)realloc(video_payload_data, payload_size*sizeof(unsigned char) + 2048);
+		video_payload_data_buffer_size = payload_size*sizeof(unsigned char) + 2048;
+	}
+
+	const unsigned char *data = payload_data;
+	const unsigned char *head = NULL;
+	unsigned int nalu_len = 0;
+	unsigned int write_len = 0, copy_len = 0;
+	unsigned char *write_pos = video_payload_data;
+
+	for(int i=0; i<payload_size; i++) {
+		if( (i>2) && (data[i-2] == 0x0) && (data[i-1] == 0x0) && (data[i] == 0x01) ) {
+			if( ((i-2)==0x0) || ((i-2) == 1) ) {
+				head = data + i + 1;
+				nalu_len = 0;
+				continue;
+			}
+
+			if(data[i-3] == 0) {
+				copy_len = nalu_len -3;
+			} else {
+				copy_len = nalu_len -2;
+			}
+
+			write_pos[0] = (copy_len >> 24) & 0xff;
+			write_pos[1] = (copy_len >> 16) & 0xff;
+			write_pos[2] = (copy_len >>  8) & 0xff;
+			write_pos[3] = (copy_len ) & 0xff;
+
+			write_pos += 4;
+			write_len += 4;
+
+			memcpy(write_pos, head, copy_len);
+			write_pos += copy_len;
+			write_len += copy_len;
+
+			if( ((*head & 0x1f) == 0x07) || ((*head & 0x1f) == 0x08) || ((*head & 0x1f) == 0x06) ) {
+				WriteH264Frame(video_payload_data, write_len, time_stamp);//time_stamp/100);
+				write_len = 0;
+				write_pos = video_payload_data;
+			}
+
+			nalu_len = 0;
+			head = data + i + 1;
+			continue;
+
+		}
+
+		nalu_len++;
+	}
+
+	if(nalu_len > 0) {
+		write_pos[0] = (nalu_len >> 24) & 0xff;
+		write_pos[1] = (nalu_len >> 16) & 0xff;
+		write_pos[2] = (nalu_len >>  8) & 0xff;
+		write_pos[3] = (nalu_len) & 0xff;
+
+		write_pos += 4;
+		write_len += 4;
+		memcpy(write_pos, head, nalu_len);
+		write_len += nalu_len;
+	}
+
+	if(write_len>0) {
+		WriteH264Frame(video_payload_data, write_len, 3600);
+	}
+	
+	video_frame_number++;
+}
+
+
+void Mp4_Writer::WriteH264Frame(unsigned char *nalus, unsigned int nalus_len, unsigned int duration) {
+	bool isIFrame = false;
+	unsigned int rend_offset = 0;
+
+	unsigned char *dst = video_temp_buffer;
+	unsigned int nalu_len = nalus_len;
+	unsigned char nalu_type;
+
+	bool write_it = false;
+	unsigned int len_written = 0;
+	nalu_type = nalus[4] & 0x1f;
+
+	switch (nalu_type)
+	{
+		case 6:
+			break;
+		case 7:
+			if( (nalu_len != video_h264_sps_size) || ((video_h264_sps != NULL) && 
+				(memcmp(video_h264_sps, nalus, video_h264_sps_size) != 0)) ) {
+				video_h264_sps_size = nalu_len - 4;
+				video_h264_sps = (unsigned char *)realloc(video_h264_sps, video_h264_sps_size);
+				memcpy(video_h264_sps, nalus+4, video_h264_sps_size);
+				if(!isFirstSPS) {
+					MP4AddH264SequenceParameterSet(mp4_file, 
+										video_track_id,
+									       	video_h264_sps, 
+										video_h264_sps_size);
+					isFirstSPS = true;
+				}
+			}
+			isIFrame = true;
+			write_it = true;
+			break;
+		case 8:
+			if( (nalu_len != video_h264_pps_size) || ((video_h264_pps != NULL) && 
+				(memcmp(video_h264_pps, nalus, video_h264_pps_size) != 0)) ) {
+				video_h264_pps_size = nalu_len - 4;
+				video_h264_pps = (unsigned char *)realloc(video_h264_pps, video_h264_pps_size);
+				memcpy(video_h264_pps, nalus+4, video_h264_sps_size);
+				if(!isFirstPPS) {
+					MP4AddH264PictureParameterSet(mp4_file, 
+										video_track_id,
+									       	video_h264_pps,
+									       	video_h264_pps_size);
+					isFirstPPS = true;
+				}
+			}
+			write_it = true;
+		break;
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+			write_it = true;
+			break;
+		case 12:
+			write_it = true;
+		default:
+			write_it = true;
+			break;
+	}
+
+	if(write_it) {
+		bool res = MP4WriteSample(mp4_file, video_track_id, nalus, nalus_len, MP4_INVALID_DURATION, rend_offset, isIFrame);
 	}
 }
-
-
-/********************************  For Register Functions  ***********************************/
-static JNINativeMethod methods[]{ 
-	{"native_init", "(Ljava/lang/String;III)I", (void *)Java_com_powervision_video_writer_AVCWriter_native_1init}, 
-	{"native_open", "(I)I", (void *)Java_com_powervision_video_writer_AVCWriter_native_1open}, 
-	{"native_write", "(II[BJIJ)I", (void *)Java_com_powervision_video_writer_AVCWriter_native_1write}, 
-	{"native_close", "(I)I", (void *)Java_com_powervision_video_writer_AVCWriter_native_1close},
-	{"native_release", "(I)V", (void *)Java_com_powervision_video_writer_AVCWriter_native_1release}, 
-}; 
- 
-static const char * classPathName = "com/powervision/video/writer/AVCWriter"; 
- 
-static int registerNativeMethods(JNIEnv* env, const char* className, 
-	JNINativeMethod* gMethods, int numMethods) 
-{ 
-	jclass clazz; 
-	clazz = env->FindClass(className); 
-	if (clazz == NULL) { 
-		LOGE("Native registration unable to find class '%s'", className); 
-		return JNI_FALSE; 
-	} 
-	if (env->RegisterNatives(clazz, gMethods, numMethods) < 0) { 
-		LOGE("RegisterNatives failed for '%s'", className); 
-		return JNI_FALSE; 
-	} 
-
-	return JNI_TRUE; 
-} 
- 
-static int registerNatives(JNIEnv* env) 
-{ 
-	if (!registerNativeMethods(env, classPathName, 
-		     methods, sizeof(methods) / sizeof(methods[0]))) { 
-		return JNI_FALSE; 
-	} 
-
-	return JNI_TRUE; 
-} 
- 
-typedef union { 
-	JNIEnv* env; 
-	void* venv; 
-} UnionJNIEnvToVoid; 
- 
-    /* This function will be call when the library first be loaded */ 
-jint JNI_OnLoad(JavaVM* vm, void* reserved) 
-{ 
-	UnionJNIEnvToVoid uenv; 
-	JNIEnv* env = NULL; 
-	LOGI("JNI_OnLoad!"); 
-
-	if (vm->GetEnv((void**)&uenv.venv, JNI_VERSION_1_4) != JNI_OK) { 
-		LOGE("ERROR: GetEnv failed"); 
-		return -1; 
-	} 
-
-	env = uenv.env;; 
-
-	//jniRegisterNativeMethods(env, "whf/jnitest/Person", methods, sizeof(methods) / sizeof(methods[0])); 
-
-	if (registerNatives(env) != JNI_TRUE) { 
-		LOGE("ERROR: registerNatives failed"); 
-		return -1; 
-	} 
-
-	return JNI_VERSION_1_4; 
-} 

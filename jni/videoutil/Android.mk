@@ -27,7 +27,10 @@ LOCAL_ARM_NEON := true
 endif
 
 LOCAL_SRC_FILES := \
-	source/mp4_writer.cpp
+	source/utils.cpp \
+	source/mp4_writer.cpp \
+	source/mp4_extractor.cpp \
+	source/interface.cpp
 
 # 默认包含的头文件路径
 LOCAL_C_INCLUDES := \

@@ -25,7 +25,9 @@ public class AVCWriter extends FileWriter {
 
     @Override
     void init() {
-        nativeWriterObject = native_init(MP4_FILE_PATH, mWidth, mHeight, mFrameRate);
+        nativeWriterObject = native_writerInit(mWidth, mHeight);
+        native_setMp4FileName(nativeWriterObject, MP4_FILE_PATH);
+        native_setMp4Fps(nativeWriterObject, mFrameRate);
 //        if(nativeWriterObject != 0) {
 //            if(mNotify != null) {
 //                mNotify.onNotify(STATUS_INIT_OK);
@@ -35,26 +37,27 @@ public class AVCWriter extends FileWriter {
 
     @Override
     public void open() {
-        int ret = native_open(nativeWriterObject);
+        native_startRecord(nativeWriterObject);
 //        if(mNotify != null) {
 //            mNotify.onNotify(ret);
 //        }
     }
 
     @Override
-    public int write(int chn, byte[] data, long size, int frametype, long ts) {
-        int ret = native_write(nativeWriterObject, chn, data, size, frametype, ts);
-        return ret;
+    public void writeFrame(byte[] data, long size, long ts) {
+        native_writeFrame(nativeWriterObject, data, size, ts);
+        //return ret;
     }
 
     @Override
     public void close() {
-        native_close(nativeWriterObject);
+        native_stopRecord(nativeWriterObject);
     }
 
-    private native int native_init(String path, int width, int height, int frameRate);
-    private native int native_open(int CObject);
-    private native int native_write(int CObject, int chn, byte[] data, long size, int frameType, long ts);
-    private native int native_close(int Cobject);
-    private native void native_release(int CObject);
+    public native int native_writerInit(int width, int height);
+    public native void native_setMp4FileName(Object obj, String fileName);
+    public native void native_setMp4Fps(Object obj, int fps);
+    public native void native_startRecord(Object obj);
+    public native void native_stopRecord(Object obj);
+    public native void native_writeFrame(Object obj, byte[] data, long size, long ts);
 }

@@ -8,7 +8,7 @@ public abstract class FileWriter extends Object {
 
     abstract void init();
     public abstract void open();
-    public abstract int write(int chn, byte[] data, long size, int frametype, long ts);
+    public abstract void writeFrame(byte[] data, long size, long ts);
     public abstract void close();
 
     public interface Notify {
