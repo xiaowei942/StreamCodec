@@ -8,17 +8,21 @@
 
 using namespace std;
 
-//#define DEBUG
-//#define PRINT_NALU_LIST
+#define DEBUG
+#define PRINT_NALU_LIST
 
 //#define PRINT_FRAME
-#if defined(PRINT_FRAME) 
-#define PRINT_FRAME_NUM 10
-#endif
-
+//#if defined(PRINT_FRAME) 
+//#define PRINT_FRAME_NUM 10
+//#endif
+#define LOG_TAG "MP4_EXTRACTOR"
 //#define PRINT_FRAME_NUM payload_size
 
-#define DEFAULT_FILE_SIZE 20*1024*1024
+#define DEFAULT_FILE_SIZE 20*1024*102
+
+#include <android/log.h>
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
 extern unsigned char *chrs_join(const unsigned char *src1, const unsigned char *src2);
 H264_Extractor::H264_Extractor():
@@ -33,7 +37,7 @@ H264_Extractor::H264_Extractor():
 int H264_Extractor::get_to_list(const char *file) {
 	fd = fopen(file, "r");
 	if(fd == NULL) {
-		printf("Error when opening file\n");
+		LOGE("Error when opening file");
 		return -1;
 	}
 
@@ -62,7 +66,7 @@ int H264_Extractor::get_to_list(const char *file) {
 #ifdef PRINT_NALU_LIST
 	int count = 0;
 	for(it = nalu_list.begin(); it!=nalu_list.end(); count++, ++it) {
-	    printf("NALU LIST -->  Count: %d   Value: %d\n", count, *it);
+	    LOGI("NALU LIST -->  Count: %d   Value: %d", count, *it);
 	}
 #endif
         return nalu_list.size();
@@ -83,10 +87,9 @@ int H264_Extractor::get_sps_pps() {
 			memcpy(sps, h264_data+index+i, size);
 
 #ifdef DEBUG
-			printf("Has sps\n");
+			LOGI("Has sps");
 			for(int k=0; k<size; k++)
-				printf("0x%02x ", sps[k]);
-			printf("\n");
+				LOGI("0x%02x ", sps[k]);
 #endif
 			break;
             }
@@ -103,10 +106,9 @@ int H264_Extractor::get_sps_pps() {
 			memcpy(pps, h264_data+index+j, size);
 
 #ifdef DEBUG
-			printf("Has pps\n");
+			LOGI("Has pps");
 			for(int k=0; k<size; k++)
-				printf("0x%02x ", pps[k]);
-			printf("\n");
+				LOGI("0x%02x ", pps[k]);
 #endif
 	    		break;
                 }
@@ -134,10 +136,9 @@ unsigned char *H264_Extractor::get_frame(unsigned int &payload_size, unsigned in
 	memcpy(data, (void *)h264_data+start_pos, payload_size);
 
 #ifdef PRINT_FRAME
-	printf("FRAME[%05d]--> [TS: %05d] -->  ", frame_index, time_stamp);
+	LOGI("FRAME[%05d]--> [TS: %05d] -->  ", frame_index, time_stamp);
 	for(int k=0; k<PRINT_FRAME_NUM; k++)
-		printf("0x%02x ", data[k]);
-	printf("\n");
+		LOGI("0x%02x ", data[k]);
 #endif
 	frame_index++;
 	time_stamp = frame_index*3600;

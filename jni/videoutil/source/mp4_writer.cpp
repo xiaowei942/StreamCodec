@@ -2,6 +2,13 @@
 #include <assert.h>
 #include "mp4_writer.h"
 
+#include <android/log.h>
+
+#define LOG_TAG "MP4_WRITER"
+
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+
 Mp4_Writer::Mp4_Writer(int width, int height):
 			mp4_fps(25),
 			isFirstSPS(false),
@@ -24,9 +31,9 @@ Mp4_Writer::Mp4_Writer(int width, int height):
 	video_width = width;
 	video_height = height;
 	memset(mp4_filename, '\0', 256);
-	video_h264_sps = (unsigned char *)malloc(video_h264_sps_size*sizeof(unsigned char));
-	video_h264_pps = (unsigned char *)malloc(video_h264_pps_size*sizeof(unsigned char));
-	video_payload_data = (unsigned char *)malloc(video_payload_data_buffer_size*sizeof(unsigned char));
+	//video_h264_sps = (unsigned char *)malloc(video_h264_sps_size*sizeof(unsigned char));
+	//video_h264_pps = (unsigned char *)malloc(video_h264_pps_size*sizeof(unsigned char));
+	//video_payload_data = (unsigned char *)malloc(video_payload_data_buffer_size*sizeof(unsigned char));
 }
 
 Mp4_Writer::~Mp4_Writer() {
@@ -99,10 +106,8 @@ void Mp4_Writer::WriteEncodedVideoFrame(const unsigned char *payload_data, unsig
 
 	}
 
-	if(video_payload_data_buffer_size < payload_size) {
-		video_payload_data = (unsigned char *)realloc(video_payload_data, payload_size*sizeof(unsigned char) + 2048);
-		video_payload_data_buffer_size = payload_size*sizeof(unsigned char) + 2048;
-	}
+	video_payload_data = (unsigned char *)malloc(payload_size*sizeof(unsigned char) + 2048);
+	video_payload_data_buffer_size = payload_size*sizeof(unsigned char) + 2048;
 
 	const unsigned char *data = payload_data;
 	const unsigned char *head = NULL;
@@ -167,6 +172,10 @@ void Mp4_Writer::WriteEncodedVideoFrame(const unsigned char *payload_data, unsig
 		WriteH264Frame(video_payload_data, write_len, 3600);
 	}
 	
+	if(video_payload_data) {
+		free(video_payload_data);
+		video_payload_data = NULL;
+	}
 	video_frame_number++;
 }
 
@@ -191,14 +200,21 @@ void Mp4_Writer::WriteH264Frame(unsigned char *nalus, unsigned int nalus_len, un
 			if( (nalu_len != video_h264_sps_size) || ((video_h264_sps != NULL) && 
 				(memcmp(video_h264_sps, nalus, video_h264_sps_size) != 0)) ) {
 				video_h264_sps_size = nalu_len - 4;
-				video_h264_sps = (unsigned char *)realloc(video_h264_sps, video_h264_sps_size);
+
+				video_h264_sps = (unsigned char *)malloc(video_h264_sps_size);
 				memcpy(video_h264_sps, nalus+4, video_h264_sps_size);
 				if(!isFirstSPS) {
+					LOGI("WEI--> SET SPS PARAM");
 					MP4AddH264SequenceParameterSet(mp4_file, 
 										video_track_id,
 									       	video_h264_sps, 
 										video_h264_sps_size);
 					isFirstSPS = true;
+					LOGI("WEI--> SET SPS PARAM OK");
+				}
+				if(video_h264_sps) {
+					free(video_h264_sps);
+					video_h264_sps = NULL;
 				}
 			}
 			isIFrame = true;
@@ -208,14 +224,21 @@ void Mp4_Writer::WriteH264Frame(unsigned char *nalus, unsigned int nalus_len, un
 			if( (nalu_len != video_h264_pps_size) || ((video_h264_pps != NULL) && 
 				(memcmp(video_h264_pps, nalus, video_h264_pps_size) != 0)) ) {
 				video_h264_pps_size = nalu_len - 4;
-				video_h264_pps = (unsigned char *)realloc(video_h264_pps, video_h264_pps_size);
-				memcpy(video_h264_pps, nalus+4, video_h264_sps_size);
+
+				video_h264_pps = (unsigned char *)malloc(video_h264_pps_size);
+				memcpy(video_h264_pps, nalus+4, video_h264_pps_size);
 				if(!isFirstPPS) {
+					LOGI("WEI--> SET SPS PARAM");
 					MP4AddH264PictureParameterSet(mp4_file, 
 										video_track_id,
 									       	video_h264_pps,
 									       	video_h264_pps_size);
 					isFirstPPS = true;
+					LOGI("WEI--> SET PPS PARAM OK");
+				}
+				if(video_h264_pps) {
+					free(video_h264_pps);
+					video_h264_pps = NULL;
 				}
 			}
 			write_it = true;

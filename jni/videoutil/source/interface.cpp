@@ -12,11 +12,17 @@ using namespace std;
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
-#define FILE_PATH "/home/liwei/Desktop/720p_1930kbs_30帧.264"
-#define MP4_FILE_PATH "/home/liwei/Desktop/test.mp4"
+#define FILE_PATH "/sdcard/test.h264"
+#define MP4_FILE_PATH "/sdcard/test.mp4"
 #define MP4_FPS 30
 
-int main() {
+/*
+ * Class:     com_powervision_video_writer_AVCWriter
+ * Method:    native_test
+ * Signature: (I)I
+ */
+JNIEXPORT int JNICALL Java_com_powervision_video_MyActivity_native_1test
+  (JNIEnv *env, jobject thiz) {
        	H264_Extractor *extractor = new H264_Extractor();
 	extractor->get_to_list(FILE_PATH);
 	extractor->get_sps_pps();
@@ -46,9 +52,11 @@ int main() {
 	unsigned char *payload_data;
 	unsigned int payload_size;
 	unsigned int time_stamp;
-	while( (payload_data = extractor->get_frame(payload_size, time_stamp)) != NULL ) {
+	int i=0;
+	while( ((payload_data = extractor->get_frame(payload_size, time_stamp)) != NULL ) && (i<1000) ) {
 		writer->WriteEncodedVideoFrame(payload_data, payload_size, time_stamp);
 		extractor->release_frame(&payload_data);
+		i++;
 	}
 	writer->DoStopRecord();
 	return 0;
@@ -122,7 +130,7 @@ JNIEXPORT void JNICALL Java_com_powervision_video_writer_AVCWriter_native_1write
 	obj->WriteEncodedVideoFrame((unsigned char *)payload_data, size, ts);
 	env->ReleaseByteArrayElements(data, payload_data, 0);
   }
-
+#if 0
 static JNINativeMethod methods[] = {
 	{ "native_writerInit", "(II)I", (void *)Java_com_powervision_video_writer_AVCWriter_native_1writerInit },
 	{ "native_setMp4FileName", "(ILjava/lang/String;)V", (void *)Java_com_powervision_video_writer_AVCWriter_native_1setMp4FileName },
@@ -188,4 +196,4 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 
         return JNI_VERSION_1_4;
 }
-
+#endif

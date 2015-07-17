@@ -22,9 +22,9 @@ LOCAL_ARM_MODE := arm
 TARGET_ARCH_ABI :=armeabi-v7a
 
 # 采用NEON优化技术
-ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)   
-LOCAL_ARM_NEON := true   
-endif
+#ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)   
+#LOCAL_ARM_NEON := true   
+#endif
 
 LOCAL_SRC_FILES := \
 	source/utils.cpp \

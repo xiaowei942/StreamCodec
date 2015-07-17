@@ -16,6 +16,14 @@ extern "C" {
 #define com_powervision_video_writer_AVCWriter_STATUS_WRITE_OK 2L
 #undef com_powervision_video_writer_AVCWriter_STATUS_CLOSE_OK
 #define com_powervision_video_writer_AVCWriter_STATUS_CLOSE_OK 3L
+
+/*
+ * Class:     com_powervision_video_writer_AVCWriter
+ * Method:    native_test
+ * Signature: (I)I
+ */	
+JNIEXPORT int JNICALL Java_com_powervision_video_MyActivity_native_1test
+  (JNIEnv *, jobject);
 /*
  * Class:     com_powervision_video_writer_AVCWriter
  * Method:    native_writerInit
