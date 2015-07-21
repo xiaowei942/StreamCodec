@@ -45,7 +45,8 @@ common_SRC_FILES := \
 
 common_CFLAGS := -fexceptions
 common_LDFLAGS :=
-TARGET_ARCH_ABI :=armeabi-v7a
+#TARGET_ARCH_ABI :=armeabi-v7a
+TARGET_ARCH_ABI :=armeabi
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 common_CFLAGS += -march=armv7-a -mfloat-abi=softfp -mfpu=neon

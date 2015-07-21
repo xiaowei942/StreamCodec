@@ -19,7 +19,7 @@ LOCAL_MODULE := libyuv2rgb
 LOCAL_PRELINK_MODULE := false
 
 LOCAL_ARM_MODE := arm
-TARGET_ARCH_ABI :=armeabi-v7a
+#TARGET_ARCH_ABI :=armeabi-v7a
 
 # 采用NEON优化技术
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)   

@@ -181,7 +181,7 @@ void initTable()
 	}
 }
 
-jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIEnv * env,
+jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP_1(JNIEnv * env,
 	jobject thiz, jintArray dat, jbyteArray buf, jint width, jint height) {
 
 	jbyte * yuv420sp = (*env)->GetByteArrayElements(env, buf, 0);
@@ -409,6 +409,23 @@ jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420P(JNIEnv * e
 
 	I420ToARGB((unsigned char *)yuv420p, width, 
 		   (unsigned char *)(yuv420p+width*height*5/4), width/2,
+		   (unsigned char *)(yuv420p+width*height), width/2,
+		   rgb, width*4,
+		   width, height
+		  );
+
+	(*env)->ReleaseByteArrayElements(env, buf, yuv420p, 0);
+	(*env)->ReleaseByteArrayElements(env, dat, rgb, 0);
+}
+
+
+
+jint Java_com_powervision_video_media_codec_StreamCodec_decodeYUV420SP(JNIEnv * env,
+		jobject thiz, jbyteArray dat, jbyteArray buf, jint width, jint height) {
+	jbyte * yuv420p = (*env)->GetByteArrayElements(env, buf, 0);
+	jbyte * rgb = (*env)->GetByteArrayElements(env, dat, 0);
+
+	NV12ToARGB((unsigned char *)yuv420p, width, 
 		   (unsigned char *)(yuv420p+width*height), width/2,
 		   rgb, width*4,
 		   width, height

@@ -90,7 +90,7 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i2, int i3) {
         sv.setFrameBitmap(StreamCodec.getFrameBitmap());
         sv.setHolder(sv.getHolder());
-        //new Thread(sv).start();
+        new Thread(sv).start();
     }
 
     @Override
@@ -100,7 +100,7 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
 
     @Override
     public void onClick(View view) {
-        StreamCodec.setCloseWriter(true);
-        //((StreamCodec)codec).setCaptureFrame(true);
+       // StreamCodec.setCloseWriter(true);
+        ((StreamCodec)codec).setCaptureFrame(true);
     }
 }

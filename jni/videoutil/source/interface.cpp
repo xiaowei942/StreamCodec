@@ -130,7 +130,7 @@ JNIEXPORT void JNICALL Java_com_powervision_video_writer_AVCWriter_native_1write
 	obj->WriteEncodedVideoFrame((unsigned char *)payload_data, size, ts);
 	env->ReleaseByteArrayElements(data, payload_data, 0);
   }
-#if 0
+#if 1
 static JNINativeMethod methods[] = {
 	{ "native_writerInit", "(II)I", (void *)Java_com_powervision_video_writer_AVCWriter_native_1writerInit },
 	{ "native_setMp4FileName", "(ILjava/lang/String;)V", (void *)Java_com_powervision_video_writer_AVCWriter_native_1setMp4FileName },
