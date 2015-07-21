@@ -35,6 +35,8 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
 
     //Save the file stream data
     private byte[] bytes = new byte[MAX_SISE];
+    private int spsLength;
+    private int ppsLength;
     private ByteBuffer Sps = null;
     private ByteBuffer Pps = null;
 
@@ -112,6 +114,14 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
         return Pps;
     }
 
+    public int getSpsLength() {
+        return spsLength;
+    }
+
+    public int getPpsLength() {
+        return ppsLength;
+    }
+
     //Open raw video file
     private boolean openFile(String file) {
         try {
@@ -182,7 +192,8 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
             int temp = bytes[index+i];
             if((temp & 0x0f) == 0x07) {
                 hasSps = true;
-                Sps = ByteBuffer.wrap(bytes, naluList.get(0), naluList.get(1)-naluList.get(0));
+                spsLength = naluList.get(1)-naluList.get(0);
+                Sps = ByteBuffer.wrap(bytes, naluList.get(0), spsLength);
 
                 break;
             }
@@ -194,7 +205,8 @@ public class FileDataExtractor extends DataExtractor implements IDataExtractor,R
                 int temp = bytes[index+j];
                 if((temp & 0x0f) == 0x08) {
                     hasPps = true;
-                    Pps = ByteBuffer.wrap(bytes, naluList.get(1), naluList.get(2)-naluList.get(1));
+                    ppsLength = naluList.get(2)-naluList.get(1);
+                    Pps = ByteBuffer.wrap(bytes, naluList.get(1), ppsLength);
                     return true;
                 }
             }

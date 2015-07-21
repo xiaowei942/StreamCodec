@@ -100,7 +100,7 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
 
     @Override
     public void onClick(View view) {
-       // StreamCodec.setCloseWriter(true);
+        StreamCodec.setCloseWriter(true);
         ((StreamCodec)codec).setCaptureFrame(true);
     }
 }

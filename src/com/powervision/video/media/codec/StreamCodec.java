@@ -123,7 +123,16 @@ public class StreamCodec extends Codec implements ICodec {
         captureFrame = isCap;
     }
 
-    void initMediaCodec(ByteBuffer sps, ByteBuffer pps) {
+    void initMediaCodec(ByteBuffer sps, int spsLength, ByteBuffer pps, int ppsLength) {
+//
+        byte[] spsBuf = new byte[spsLength];
+        sps.get(spsBuf, 0, spsLength);
+        sps.position(0);
+        byte[] ppsBuf = new byte[ppsLength];
+        pps.get(ppsBuf, 0, ppsLength);
+        pps.position(0);
+        writer.writeFrame(spsBuf, spsLength, 1);
+        writer.writeFrame(ppsBuf, ppsLength, 1);
         info = new MediaCodec.BufferInfo();
         codec = MediaCodec.createDecoderByType(MIME_TYPE);
         MediaFormat format = MediaFormat.createVideoFormat(MIME_TYPE, mWidth, mHeight);
@@ -142,7 +151,7 @@ public class StreamCodec extends Codec implements ICodec {
     @Override
     public void initCodec(Object obj) {
         super.initCodec(obj);
-        initMediaCodec(mExtractor.getSps(), mExtractor.getPps());
+        initMediaCodec(mExtractor.getSps(), ((FileDataExtractor)mExtractor).getSpsLength(), mExtractor.getPps(), ((FileDataExtractor)mExtractor).getPpsLength());
     }
 
     @Override
