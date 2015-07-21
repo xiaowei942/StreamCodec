@@ -45,8 +45,8 @@ common_SRC_FILES := \
 
 common_CFLAGS := -fexceptions
 common_LDFLAGS :=
-#TARGET_ARCH_ABI :=armeabi-v7a
-TARGET_ARCH_ABI :=armeabi
+TARGET_ARCH_ABI :=armeabi-v7a
+#TARGET_ARCH_ABI :=armeabi
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
 common_CFLAGS += -march=armv7-a -mfloat-abi=softfp -mfpu=neon
@@ -54,7 +54,7 @@ common_CFLAGS += -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 common_LDFLAGS += -Wl,--fix-cortex-a8
 
 # 采用NEON优化技术   
-LOCAL_ARM_NEON := false
+LOCAL_ARM_NEON := true
 endif
 
 
