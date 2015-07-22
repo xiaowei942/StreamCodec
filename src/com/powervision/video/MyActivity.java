@@ -49,7 +49,6 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
             capture_btn.setOnClickListener(this);
             sv.setOnClickListener(this);
             sv.getHolder().addCallback(this);
-            prepare();
         }
     }
 
@@ -84,6 +83,8 @@ public class MyActivity extends Activity implements OnFrameProcessedListener, Su
         } else {
             mSurface = null;
         }
+
+        prepare();
     }
 
     @Override

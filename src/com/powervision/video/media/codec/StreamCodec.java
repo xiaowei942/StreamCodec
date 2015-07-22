@@ -57,6 +57,7 @@ public class StreamCodec extends Codec implements ICodec {
     static int mWidth = -1;
     static int mHeight = -1;
     static Surface mSurface = null;
+    static boolean hasSurface = false;
     static IDataExtractor mExtractor = null;
 
     FileOutputStream outputStream = null;
@@ -88,6 +89,12 @@ public class StreamCodec extends Codec implements ICodec {
         obj = param.obj;
         mExtractor = param.extractor;
         mSurface = param.surface;
+        if(mSurface == null) {
+            hasSurface = false;
+        } else {
+            hasSurface = true;
+        }
+
         if ((param.width % 16) != 0 || ((param.height % 16) != 0)) {
             Log.w(TAG, "WARNING: width or height not multiple of 16");
         }
@@ -217,7 +224,7 @@ public class StreamCodec extends Codec implements ICodec {
         public void run() {
 
             // Save a copy to disk.
-            if (mSurface == null) {
+            if (!hasSurface) {
                 if (OUTPUT_YUV_TO_FILE) {
                     String fileName_out = DEBUG_OUT_FILE_NAME_BASE + mWidth + "x" + mHeight + ".yuv";
                     try {
@@ -327,7 +334,7 @@ public class StreamCodec extends Codec implements ICodec {
                     } else {  // decoderStatus >= 0
                         ByteBuffer outputFrame = decoderOutputBuffers[decoderStatus];
 
-                        if (mSurface == null) {
+                        if (!hasSurface) {
                             //outputFrame.position(info.offset);
                             //outputFrame.limit(info.offset + info.size);
                             rawSize += info.size;
@@ -417,7 +424,7 @@ public class StreamCodec extends Codec implements ICodec {
                             outputDone = true;
                         }
 
-                        if (mSurface == null) {
+                        if (!hasSurface) {
                             codec.releaseOutputBuffer(decoderStatus, false /*render*/);
                         } else {
                             codec.releaseOutputBuffer(decoderStatus, true /*render*/);
